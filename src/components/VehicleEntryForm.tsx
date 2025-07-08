@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,35 +7,59 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Car, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface VehicleEntry {
   vehicleNumber: string;
   vehicleStatus: string;
   vehicleCategory: string;
-  companyName: string;
+  companyId: string;
   purposeOfVisit: string;
   ownerName: string;
 }
 
+interface Company {
+  id: string;
+  name: string;
+}
+
 const VehicleEntryForm = () => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState<VehicleEntry>({
     vehicleNumber: '',
     vehicleStatus: '',
     vehicleCategory: '',
-    companyName: 'Others',
+    companyId: '',
     purposeOfVisit: 'Job',
     ownerName: ''
   });
 
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const companies = [
-    'TechCorp Ltd.',
-    'Digital Solutions Inc.',
-    'Innovation Hub',
-    'StartupVenture',
-    'Others'
-  ];
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
+
+  const fetchCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('id, name')
+        .order('name');
+
+      if (error) throw error;
+      setCompanies(data || []);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load companies.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,20 +73,35 @@ const VehicleEntryForm = () => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to submit entries.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Simulate API call - replace with actual Supabase integration
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Vehicle entry submitted:', {
-        ...formData,
-        timestamp: new Date().toISOString()
-      });
+      const { error } = await supabase
+        .from('vehicle_entries')
+        .insert({
+          user_id: user.id,
+          vehicle_number: formData.vehicleNumber,
+          vehicle_status: formData.vehicleStatus,
+          vehicle_category: formData.vehicleCategory,
+          company_id: formData.companyId || null,
+          purpose_of_visit: formData.purposeOfVisit,
+          owner_name: formData.ownerName || null
+        });
+
+      if (error) throw error;
       
       toast({
         title: "Success!",
-        description: "Entry submitted successfully.",
+        description: "Vehicle entry submitted successfully.",
       });
       
       // Reset form
@@ -70,15 +109,16 @@ const VehicleEntryForm = () => {
         vehicleNumber: '',
         vehicleStatus: '',
         vehicleCategory: '',
-        companyName: 'Others',
+        companyId: '',
         purposeOfVisit: 'Job',
         ownerName: ''
       });
       
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Error submitting entry:', error);
       toast({
         title: "Error",
-        description: "Failed to submit entry. Please try again.",
+        description: error.message || "Failed to submit entry. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -152,14 +192,14 @@ const VehicleEntryForm = () => {
               <Label htmlFor="companyName" className="text-sm font-medium">
                 Company Name
               </Label>
-              <Select value={formData.companyName} onValueChange={(value) => handleInputChange('companyName', value)}>
+              <Select value={formData.companyId} onValueChange={(value) => handleInputChange('companyId', value)}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select company" />
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map((company) => (
-                    <SelectItem key={company} value={company}>
-                      {company}
+                    <SelectItem key={company.id} value={company.id}>
+                      {company.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

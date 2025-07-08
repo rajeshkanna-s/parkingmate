@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,20 +8,70 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, X, Building2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Company {
+  id: string;
+  name: string;
+  created_at: string;
+}
 
 const Companies = () => {
-  const [companies, setCompanies] = useState([
-    'TechCorp Ltd.',
-    'Digital Solutions Inc.',
-    'Innovation Hub',
-    'StartupVenture'
-  ]);
-  
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [newCompany, setNewCompany] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const handleAddCompany = () => {
+  useEffect(() => {
+    fetchCompanies();
+    subscribeToChanges();
+  }, []);
+
+  const fetchCompanies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setCompanies(data || []);
+    } catch (error) {
+      console.error('Error fetching companies:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load companies.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const subscribeToChanges = () => {
+    const channel = supabase
+      .channel('companies_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'companies'
+        },
+        () => {
+          console.log('Companies changed, refetching...');
+          fetchCompanies();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
+
+  const handleAddCompany = async () => {
     if (!newCompany.trim()) {
       toast({
         title: "Error",
@@ -31,29 +81,45 @@ const Companies = () => {
       return;
     }
 
-    if (companies.includes(newCompany.trim())) {
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .insert({ name: newCompany.trim() });
+
+      if (error) {
+        if (error.code === '23505') {
+          toast({
+            title: "Error",
+            description: "Company already exists.",
+            variant: "destructive"
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      setNewCompany('');
+      toast({
+        title: "Success!",
+        description: "Company added successfully.",
+      });
+    } catch (error: any) {
+      console.error('Error adding company:', error);
       toast({
         title: "Error",
-        description: "Company already exists.",
+        description: error.message || "Failed to add company.",
         variant: "destructive"
       });
-      return;
     }
-
-    setCompanies(prev => [...prev, newCompany.trim()]);
-    setNewCompany('');
-    toast({
-      title: "Success!",
-      description: "Company added successfully.",
-    });
   };
 
   const handleEditCompany = (index: number) => {
     setEditingIndex(index);
-    setEditingValue(companies[index]);
+    setEditingValue(companies[index].name);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editingValue.trim()) {
       toast({
         title: "Error",
@@ -63,16 +129,30 @@ const Companies = () => {
       return;
     }
 
-    const updatedCompanies = [...companies];
-    updatedCompanies[editingIndex!] = editingValue.trim();
-    setCompanies(updatedCompanies);
-    setEditingIndex(null);
-    setEditingValue('');
-    
-    toast({
-      title: "Success!",
-      description: "Company updated successfully.",
-    });
+    try {
+      const company = companies[editingIndex!];
+      const { error } = await supabase
+        .from('companies')
+        .update({ name: editingValue.trim() })
+        .eq('id', company.id);
+
+      if (error) throw error;
+
+      setEditingIndex(null);
+      setEditingValue('');
+      
+      toast({
+        title: "Success!",
+        description: "Company updated successfully.",
+      });
+    } catch (error: any) {
+      console.error('Error updating company:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update company.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCancelEdit = () => {
@@ -80,15 +160,41 @@ const Companies = () => {
     setEditingValue('');
   };
 
-  const handleDeleteCompany = (index: number) => {
-    const companyName = companies[index];
-    setCompanies(prev => prev.filter((_, i) => i !== index));
+  const handleDeleteCompany = async (index: number) => {
+    const company = companies[index];
     
-    toast({
-      title: "Success!",
-      description: `${companyName} has been removed.`,
-    });
+    try {
+      const { error } = await supabase
+        .from('companies')
+        .delete()
+        .eq('id', company.id);
+
+      if (error) throw error;
+      
+      toast({
+        title: "Success!",
+        description: `${company.name} has been removed.`,
+      });
+    } catch (error: any) {
+      console.error('Error deleting company:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete company.",
+        variant: "destructive"
+      });
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">Loading companies...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -142,7 +248,7 @@ const Companies = () => {
             <div className="space-y-3">
               {companies.map((company, index) => (
                 <div
-                  key={index}
+                  key={company.id}
                   className="flex items-center justify-between p-4 bg-white border rounded-lg hover:shadow-sm transition-shadow"
                 >
                   {editingIndex === index ? (
@@ -166,7 +272,7 @@ const Companies = () => {
                         <Badge variant="outline" className="text-sm">
                           {index + 1}
                         </Badge>
-                        <span className="text-gray-900 font-medium">{company}</span>
+                        <span className="text-gray-900 font-medium">{company.name}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Button

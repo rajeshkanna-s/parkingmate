@@ -1,64 +1,105 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface Entry {
   id: string;
-  vehicleNumber: string;
-  category: string;
-  status: string;
-  company: string;
-  ownerName: string;
-  timestamp: string;
+  vehicle_number: string;
+  vehicle_category: string;
+  vehicle_status: string;
+  owner_name: string;
+  purpose_of_visit: string;
+  created_at: string;
+  companies: {
+    name: string;
+  } | null;
 }
 
 const RecentEntries = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Mock data - replace with actual data from Supabase
-  const [entries] = useState<Entry[]>([
-    {
-      id: '1',
-      vehicleNumber: 'MH12AB1234',
-      category: 'Car',
-      status: 'IN',
-      company: 'TechCorp Ltd.',
-      ownerName: 'John Doe',
-      timestamp: '2024-01-15 10:30 AM'
-    },
-    {
-      id: '2',
-      vehicleNumber: 'MH14CD5678',
-      category: 'Bike',
-      status: 'OUT',
-      company: 'Digital Solutions Inc.',
-      ownerName: 'Jane Smith',
-      timestamp: '2024-01-15 11:45 AM'
-    },
-    {
-      id: '3',
-      vehicleNumber: 'KA01EF9012',
-      category: 'Car',
-      status: 'IN',
-      company: 'Others',
-      ownerName: 'Mike Johnson',
-      timestamp: '2024-01-15 12:15 PM'
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEntries();
+    subscribeToChanges();
+  }, []);
+
+  const fetchEntries = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vehicle_entries')
+        .select(`
+          *,
+          companies (
+            name
+          )
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching entries:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load recent entries.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  const subscribeToChanges = () => {
+    const channel = supabase
+      .channel('vehicle_entries_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'vehicle_entries'
+        },
+        () => {
+          console.log('Vehicle entries changed, refetching...');
+          fetchEntries();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  };
 
   const filteredEntries = entries.filter(entry =>
-    entry.vehicleNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.ownerName.toLowerCase().includes(searchTerm.toLowerCase())
+    entry.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (entry.owner_name && entry.owner_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (entry.companies?.name && entry.companies.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleEdit = (entryId: string) => {
     console.log('Edit entry:', entryId);
-    // Implement edit functionality
+    // TODO: Implement edit functionality
   };
+
+  if (loading) {
+    return (
+      <Card className="w-full max-w-6xl mx-auto mt-8">
+        <CardContent className="p-6">
+          <div className="text-center">Loading recent entries...</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-6xl mx-auto mt-8">
@@ -95,21 +136,23 @@ const RecentEntries = () => {
             <tbody>
               {filteredEntries.map((entry) => (
                 <tr key={entry.id} className="border-b hover:bg-gray-50">
-                  <td className="py-3 px-2 font-mono text-sm">{entry.vehicleNumber}</td>
+                  <td className="py-3 px-2 font-mono text-sm">{entry.vehicle_number}</td>
                   <td className="py-3 px-2">
-                    <Badge variant="outline">{entry.category}</Badge>
+                    <Badge variant="outline">{entry.vehicle_category}</Badge>
                   </td>
                   <td className="py-3 px-2">
                     <Badge 
-                      variant={entry.status === 'IN' ? 'default' : 'secondary'}
-                      className={entry.status === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                      variant={entry.vehicle_status === 'IN' ? 'default' : 'secondary'}
+                      className={entry.vehicle_status === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
                     >
-                      {entry.status}
+                      {entry.vehicle_status}
                     </Badge>
                   </td>
-                  <td className="py-3 px-2 hidden sm:table-cell text-sm">{entry.company}</td>
-                  <td className="py-3 px-2 hidden md:table-cell text-sm">{entry.ownerName}</td>
-                  <td className="py-3 px-2 hidden lg:table-cell text-sm text-gray-600">{entry.timestamp}</td>
+                  <td className="py-3 px-2 hidden sm:table-cell text-sm">{entry.companies?.name || 'N/A'}</td>
+                  <td className="py-3 px-2 hidden md:table-cell text-sm">{entry.owner_name || 'N/A'}</td>
+                  <td className="py-3 px-2 hidden lg:table-cell text-sm text-gray-600">
+                    {new Date(entry.created_at).toLocaleString()}
+                  </td>
                   <td className="py-3 px-2 text-center">
                     <Button
                       variant="outline"

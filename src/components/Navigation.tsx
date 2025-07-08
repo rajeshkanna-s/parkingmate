@@ -1,12 +1,15 @@
 
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Car, BarChart, Search, Building2, Menu, X } from 'lucide-react';
+import { Car, BarChart, Search, Building2, Menu, X, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { signOut, user } = useAuth();
 
   const navItems = [
     { href: '/', label: 'Home', icon: Car },
@@ -16,6 +19,22 @@ const Navigation = () => {
   ];
 
   const isActive = (href: string) => location.pathname === href;
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Success!",
+        description: "Signed out successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out.",
+        variant: "destructive"
+      });
+    }
+  };
 
   return (
     <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
@@ -47,9 +66,15 @@ const Navigation = () => {
                 </Link>
               );
             })}
-            <Button variant="outline" size="sm">
-              Sign Out
-            </Button>
+            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
+              <span className="text-sm text-gray-600">
+                {user?.email}
+              </span>
+              <Button variant="outline" size="sm" onClick={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
           </div>
 
           {/* Mobile menu button */}
@@ -86,8 +111,10 @@ const Navigation = () => {
                   </Link>
                 );
               })}
-              <div className="px-3 py-2">
-                <Button variant="outline" size="sm" className="w-full">
+              <div className="px-3 py-2 border-t border-gray-200 mt-4">
+                <p className="text-sm text-gray-600 mb-2">{user?.email}</p>
+                <Button variant="outline" size="sm" className="w-full" onClick={handleSignOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
                   Sign Out
                 </Button>
               </div>

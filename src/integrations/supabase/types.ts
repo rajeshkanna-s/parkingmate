@@ -14,7 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      companies: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id: string
+          last_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vehicle_entries: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          id: string
+          owner_name: string | null
+          purpose_of_visit: string | null
+          updated_at: string
+          user_id: string
+          vehicle_category: string
+          vehicle_number: string
+          vehicle_status: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          owner_name?: string | null
+          purpose_of_visit?: string | null
+          updated_at?: string
+          user_id: string
+          vehicle_category: string
+          vehicle_number: string
+          vehicle_status: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          owner_name?: string | null
+          purpose_of_visit?: string | null
+          updated_at?: string
+          user_id?: string
+          vehicle_category?: string
+          vehicle_number?: string
+          vehicle_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
