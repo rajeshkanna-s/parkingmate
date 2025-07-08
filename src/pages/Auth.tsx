@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Car, Mail, Lock, User } from 'lucide-react';
+import { Car, Mail, Lock, User, Phone } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
@@ -18,7 +18,8 @@ const Auth = () => {
     lastName: '', 
     email: '', 
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    mobile: ''
   });
   
   const { user, signIn, signUp, signInWithGoogle } = useAuth();
@@ -85,6 +86,7 @@ const Auth = () => {
         {
           first_name: signUpData.firstName,
           last_name: signUpData.lastName,
+          mobile: signUpData.mobile,
         }
       );
       
@@ -238,6 +240,22 @@ const Auth = () => {
                       placeholder="Enter your email"
                       value={signUpData.email}
                       onChange={(e) => setSignUpData(prev => ({ ...prev, email: e.target.value }))}
+                      className="pl-10"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="signup-mobile">Mobile Number</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="signup-mobile"
+                      type="tel"
+                      placeholder="Enter your mobile number"
+                      value={signUpData.mobile}
+                      onChange={(e) => setSignUpData(prev => ({ ...prev, mobile: e.target.value }))}
                       className="pl-10"
                       required
                     />

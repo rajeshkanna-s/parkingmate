@@ -9,10 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, Edit, X, Building2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Company {
   id: string;
   name: string;
+  user_id: string;
   created_at: string;
 }
 
@@ -22,17 +24,23 @@ const Companies = () => {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchCompanies();
-    subscribeToChanges();
-  }, []);
+    if (user) {
+      fetchCompanies();
+      subscribeToChanges();
+    }
+  }, [user]);
 
   const fetchCompanies = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('companies')
         .select('*')
+        .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
@@ -50,6 +58,8 @@ const Companies = () => {
   };
 
   const subscribeToChanges = () => {
+    if (!user) return;
+
     const channel = supabase
       .channel('companies_changes')
       .on(
@@ -57,7 +67,8 @@ const Companies = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'companies'
+          table: 'companies',
+          filter: `user_id=eq.${user.id}`
         },
         () => {
           console.log('Companies changed, refetching...');
@@ -72,6 +83,15 @@ const Companies = () => {
   };
 
   const handleAddCompany = async () => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to add companies.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (!newCompany.trim()) {
       toast({
         title: "Error",
@@ -94,13 +114,16 @@ const Companies = () => {
     try {
       const { error } = await supabase
         .from('companies')
-        .insert({ name: newCompany.trim() });
+        .insert({ 
+          name: newCompany.trim(),
+          user_id: user.id
+        });
 
       if (error) {
         if (error.code === '23505') {
           toast({
             title: "Error",
-            description: "Company already exists.",
+            description: "Company already exists in your list.",
             variant: "destructive"
           });
         } else {
@@ -130,6 +153,8 @@ const Companies = () => {
   };
 
   const handleSaveEdit = async () => {
+    if (!user) return;
+
     if (!editingValue.trim()) {
       toast({
         title: "Error",
@@ -154,13 +179,14 @@ const Companies = () => {
       const { error } = await supabase
         .from('companies')
         .update({ name: editingValue.trim() })
-        .eq('id', company.id);
+        .eq('id', company.id)
+        .eq('user_id', user.id);
 
       if (error) {
         if (error.code === '23505') {
           toast({
             title: "Error",
-            description: "Company name already exists.",
+            description: "Company name already exists in your list.",
             variant: "destructive"
           });
         } else {
@@ -192,6 +218,8 @@ const Companies = () => {
   };
 
   const handleDeleteCompany = async (index: number) => {
+    if (!user) return;
+
     const company = companies[index];
     
     // Show confirmation dialog
@@ -205,7 +233,8 @@ const Companies = () => {
       const { error } = await supabase
         .from('companies')
         .delete()
-        .eq('id', company.id);
+        .eq('id', company.id)
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Delete error:', error);
@@ -223,9 +252,6 @@ const Companies = () => {
       
       console.log('Company deleted successfully');
       
-      // Manually update the local state to reflect the deletion
-      setCompanies(prevCompanies => prevCompanies.filter(c => c.id !== company.id));
-      
       toast({
         title: "Success!",
         description: `${company.name} has been removed.`,
@@ -239,6 +265,17 @@ const Companies = () => {
       });
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">Please log in to manage companies.</div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -258,7 +295,7 @@ const Companies = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Company Management</h1>
-          <p className="text-gray-600 mt-2">Manage company list for vehicle entries</p>
+          <p className="text-gray-600 mt-2">Manage your personal company list for vehicle entries</p>
         </div>
 
         {/* Add New Company */}
@@ -296,7 +333,7 @@ const Companies = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Company List ({companies.length + 1}) {/* +1 for Others */}
+              Your Company List ({companies.length + 1}) {/* +1 for Others */}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -375,8 +412,8 @@ const Companies = () => {
             
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Note:</strong> Changes to the company list will be immediately reflected in the vehicle entry form dropdown.
-                The "Others" option is always available by default and cannot be removed.
+                <strong>Note:</strong> Changes to your company list will be immediately reflected in the vehicle entry form dropdown.
+                The "Others" option is always available by default and cannot be removed. Only you can see and manage your companies.
               </p>
             </div>
           </CardContent>
