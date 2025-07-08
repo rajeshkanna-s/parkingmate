@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Company {
   id: string;
   name: string;
+  user_id: string | null;
   created_at: string;
 }
 
@@ -38,7 +39,8 @@ const Companies = () => {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('id, name, created_at')
+        .select('id, name, user_id, created_at')
+        .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
@@ -65,7 +67,8 @@ const Companies = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'companies'
+          table: 'companies',
+          filter: `user_id=eq.${user.id}`
         },
         () => {
           console.log('Companies changed, refetching...');
@@ -112,7 +115,8 @@ const Companies = () => {
       const { error } = await supabase
         .from('companies')
         .insert({ 
-          name: newCompany.trim()
+          name: newCompany.trim(),
+          user_id: user.id
         });
 
       if (error) {
@@ -175,7 +179,8 @@ const Companies = () => {
       const { error } = await supabase
         .from('companies')
         .update({ name: editingValue.trim() })
-        .eq('id', company.id);
+        .eq('id', company.id)
+        .eq('user_id', user.id);
 
       if (error) {
         if (error.code === '23505') {
@@ -228,7 +233,8 @@ const Companies = () => {
       const { error } = await supabase
         .from('companies')
         .delete()
-        .eq('id', company.id);
+        .eq('id', company.id)
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Delete error:', error);
@@ -289,7 +295,7 @@ const Companies = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Company Management</h1>
-          <p className="text-gray-600 mt-2">Manage your company list for vehicle entries</p>
+          <p className="text-gray-600 mt-2">Manage your personal company list for vehicle entries</p>
         </div>
 
         {/* Add New Company */}
@@ -327,7 +333,7 @@ const Companies = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Company List ({companies.length + 1}) {/* +1 for Others */}
+              Your Company List ({companies.length + 1}) {/* +1 for Others */}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -407,7 +413,7 @@ const Companies = () => {
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
                 <strong>Note:</strong> Changes to your company list will be immediately reflected in the vehicle entry form dropdown.
-                The "Others" option is always available by default and cannot be removed.
+                The "Others" option is always available by default and cannot be removed. Only you can see and manage your companies.
               </p>
             </div>
           </CardContent>
