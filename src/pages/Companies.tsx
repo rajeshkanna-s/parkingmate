@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,7 +38,7 @@ const Companies = () => {
     try {
       const { data, error } = await supabase
         .from('companies')
-        .select('*')
+        .select('id, name, user_id, created_at')
         .eq('user_id', user.id)
         .order('name');
 
