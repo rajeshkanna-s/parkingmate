@@ -2,57 +2,86 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Car, Bike, ArrowUp, ArrowDown } from 'lucide-react';
-import Navigation from '@/components/Navigation';
+import { Car, Users, Building2, TrendingUp, Calendar } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import Navigation from '@/components/Navigation';
 
 interface DashboardStats {
+  totalEntries: number;
   vehiclesIn: number;
   vehiclesOut: number;
-  currentlyParked: number;
-  totalEntries: number;
-}
-
-interface CompanyData {
-  name: string;
-  count: number;
-  color: string;
-}
-
-interface HourlyData {
-  hour: string;
-  cars: number;
-  bikes: number;
+  totalCompanies: number;
+  monthlyData: Array<{ name: string; value: number; color: string }>;
 }
 
 const Dashboard = () => {
-  const [todayStats, setTodayStats] = useState<DashboardStats>({
+  const [stats, setStats] = useState<DashboardStats>({
+    totalEntries: 0,
     vehiclesIn: 0,
     vehiclesOut: 0,
-    currentlyParked: 0,
-    totalEntries: 0
+    totalCompanies: 0,
+    monthlyData: []
   });
-
-  const [companyData, setCompanyData] = useState<CompanyData[]>([]);
-  const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
+  const [recentEntries, setRecentEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
-    subscribeToChanges();
   }, []);
 
   const fetchDashboardData = async () => {
     try {
-      // Get today's date range
-      const today = new Date();
-      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+      // Fetch basic stats
+      const [entriesResponse, companiesResponse] = await Promise.all([
+        supabase.from('vehicle_entries').select('*'),
+        supabase.from('companies').select('*')
+      ]);
 
-      // Fetch today's entries
-      const { data: entries, error } = await supabase
+      if (entriesResponse.error) throw entriesResponse.error;
+      if (companiesResponse.error) throw companiesResponse.error;
+
+      const entries = entriesResponse.data || [];
+      const companies = companiesResponse.data || [];
+
+      // Calculate stats
+      const vehiclesIn = entries.filter(entry => entry.vehicle_status === 'IN').length;
+      const vehiclesOut = entries.filter(entry => entry.vehicle_status === 'OUT').length;
+
+      // Calculate monthly data for the pie chart
+      const currentYear = new Date().getFullYear();
+      const monthlyStats: { [key: string]: number } = {};
+      
+      entries.forEach(entry => {
+        const entryDate = new Date(entry.created_at);
+        if (entryDate.getFullYear() === currentYear) {
+          const monthName = entryDate.toLocaleString('default', { month: 'long' });
+          monthlyStats[monthName] = (monthlyStats[monthName] || 0) + 1;
+        }
+      });
+
+      const colors = [
+        '#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1',
+        '#d084d0', '#ffb347', '#87ceeb', '#dda0dd', '#98fb98',
+        '#f0e68c', '#ffa07a'
+      ];
+
+      const monthlyData = Object.entries(monthlyStats).map(([month, count], index) => ({
+        name: month,
+        value: count,
+        color: colors[index % colors.length]
+      }));
+
+      setStats({
+        totalEntries: entries.length,
+        vehiclesIn,
+        vehiclesOut,
+        totalCompanies: companies.length,
+        monthlyData
+      });
+
+      // Fetch recent entries with company info
+      const { data: recentData, error: recentError } = await supabase
         .from('vehicle_entries')
         .select(`
           *,
@@ -60,90 +89,17 @@ const Dashboard = () => {
             name
           )
         `)
-        .gte('created_at', startOfDay.toISOString())
-        .lt('created_at', endOfDay.toISOString());
+        .order('created_at', { ascending: false })
+        .limit(5);
 
-      if (error) throw error;
+      if (recentError) throw recentError;
+      setRecentEntries(recentData || []);
 
-      // Calculate stats
-      const vehiclesIn = entries?.filter(e => e.vehicle_status === 'IN').length || 0;
-      const vehiclesOut = entries?.filter(e => e.vehicle_status === 'OUT').length || 0;
-      const totalEntries = entries?.length || 0;
-      const currentlyParked = vehiclesIn - vehiclesOut;
-
-      setTodayStats({
-        vehiclesIn,
-        vehiclesOut,
-        currentlyParked: Math.max(0, currentlyParked),
-        totalEntries
-      });
-
-      // Process company data
-      const companyCount: { [key: string]: number } = {};
-      entries?.forEach(entry => {
-        const companyName = entry.companies?.name || 'Others';
-        companyCount[companyName] = (companyCount[companyName] || 0) + 1;
-      });
-
-      const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-      const processedCompanyData = Object.entries(companyCount)
-        .map(([name, count], index) => ({
-          name,
-          count,
-          color: colors[index % colors.length]
-        }))
-        .sort((a, b) => b.count - a.count);
-
-      setCompanyData(processedCompanyData);
-
-      // Process hourly data (mock data for now - you can enhance this with real hourly breakdown)
-      const mockHourlyData = [
-        { hour: '8AM', cars: Math.floor(Math.random() * 5), bikes: Math.floor(Math.random() * 3) },
-        { hour: '9AM', cars: Math.floor(Math.random() * 8), bikes: Math.floor(Math.random() * 5) },
-        { hour: '10AM', cars: Math.floor(Math.random() * 12), bikes: Math.floor(Math.random() * 8) },
-        { hour: '11AM', cars: Math.floor(Math.random() * 15), bikes: Math.floor(Math.random() * 10) },
-        { hour: '12PM', cars: Math.floor(Math.random() * 10), bikes: Math.floor(Math.random() * 6) },
-        { hour: '1PM', cars: Math.floor(Math.random() * 8), bikes: Math.floor(Math.random() * 4) },
-        { hour: '2PM', cars: Math.floor(Math.random() * 12), bikes: Math.floor(Math.random() * 7) },
-        { hour: '3PM', cars: Math.floor(Math.random() * 14), bikes: Math.floor(Math.random() * 9) },
-        { hour: '4PM', cars: Math.floor(Math.random() * 16), bikes: Math.floor(Math.random() * 11) },
-        { hour: '5PM', cars: Math.floor(Math.random() * 18), bikes: Math.floor(Math.random() * 13) }
-      ];
-
-      setHourlyData(mockHourlyData);
-
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load dashboard data.",
-        variant: "destructive"
-      });
     } finally {
       setLoading(false);
     }
-  };
-
-  const subscribeToChanges = () => {
-    const channel = supabase
-      .channel('dashboard_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'vehicle_entries'
-        },
-        () => {
-          console.log('Vehicle entries changed, refreshing dashboard...');
-          fetchDashboardData();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   };
 
   if (loading) {
@@ -163,145 +119,148 @@ const Dashboard = () => {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">Real-time parking analytics for today</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Dashboard Overview
+          </h1>
+          <p className="text-gray-600">
+            Real-time insights into your parking management system
+          </p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Vehicles IN</p>
-                  <p className="text-2xl font-bold text-green-600">{todayStats.vehiclesIn}</p>
-                </div>
-                <div className="p-3 bg-green-100 rounded-full">
-                  <ArrowUp className="h-6 w-6 text-green-600" />
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Entries</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalEntries}</div>
+              <p className="text-xs text-muted-foreground">
+                All time vehicle entries
+              </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Vehicles OUT</p>
-                  <p className="text-2xl font-bold text-red-600">{todayStats.vehiclesOut}</p>
-                </div>
-                <div className="p-3 bg-red-100 rounded-full">
-                  <ArrowDown className="h-6 w-6 text-red-600" />
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Vehicles IN</CardTitle>
+              <Car className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.vehiclesIn}</div>
+              <p className="text-xs text-muted-foreground">
+                Currently parked
+              </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Currently Parked</p>
-                  <p className="text-2xl font-bold text-blue-600">{todayStats.currentlyParked}</p>
-                </div>
-                <div className="p-3 bg-blue-100 rounded-full">
-                  <Car className="h-6 w-6 text-blue-600" />
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Vehicles OUT</CardTitle>
+              <Car className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">{stats.vehiclesOut}</div>
+              <p className="text-xs text-muted-foreground">
+                Exited vehicles
+              </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total Entries</p>
-                  <p className="text-2xl font-bold text-purple-600">{todayStats.totalEntries}</p>
-                </div>
-                <div className="p-3 bg-purple-100 rounded-full">
-                  <Bike className="h-6 w-6 text-purple-600" />
-                </div>
-              </div>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Companies</CardTitle>
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalCompanies}</div>
+              <p className="text-xs text-muted-foreground">
+                Registered companies
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Company-wise Summary */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Monthly Vehicle Traffic Pie Chart */}
           <Card>
             <CardHeader>
-              <CardTitle>Company-wise Vehicle Count</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {companyData.length > 0 ? (
-                <>
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={companyData}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={80}
-                          dataKey="count"
-                          label={({ name, value }) => `${name}: ${value}`}
-                        >
-                          {companyData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    {companyData.map((company) => (
-                      <div key={company.name} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: company.color }}
-                          />
-                          <span className="text-sm">{company.name}</span>
-                        </div>
-                        <Badge variant="outline">{company.count}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  No data available for today
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Hourly Traffic */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Hourly Vehicle Traffic</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Monthly Vehicle Traffic
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={hourlyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" />
-                    <YAxis />
-                    <Bar dataKey="cars" fill="#3B82F6" name="Cars" />
-                    <Bar dataKey="bikes" fill="#10B981" name="Bikes" />
-                  </BarChart>
+                  <PieChart>
+                    <Pie
+                      data={stats.monthlyData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {stats.monthlyData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="flex items-center justify-center gap-6 mt-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded-full" />
-                  <span className="text-sm">Cars</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full" />
-                  <span className="text-sm">Bikes</span>
-                </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Activities */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Recent Activities
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentEntries.map((entry) => (
+                  <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0">
+                        <Car className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {entry.vehicle_number}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {entry.companies?.name || 'No Company'} • {entry.vehicle_category}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge 
+                        variant={entry.vehicle_status === 'IN' ? 'default' : 'secondary'}
+                        className={entry.vehicle_status === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                      >
+                        {entry.vehicle_status}
+                      </Badge>
+                      <span className="text-xs text-gray-500">
+                        {new Date(entry.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                
+                {recentEntries.length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    No recent activities found
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

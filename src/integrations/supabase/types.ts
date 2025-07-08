@@ -39,6 +39,8 @@ export type Database = {
           first_name: string | null
           id: string
           last_name: string | null
+          mobile: string | null
+          name: string | null
           updated_at: string
         }
         Insert: {
@@ -47,6 +49,8 @@ export type Database = {
           first_name?: string | null
           id: string
           last_name?: string | null
+          mobile?: string | null
+          name?: string | null
           updated_at?: string
         }
         Update: {
@@ -55,6 +59,8 @@ export type Database = {
           first_name?: string | null
           id?: string
           last_name?: string | null
+          mobile?: string | null
+          name?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -68,6 +74,8 @@ export type Database = {
           purpose_of_visit: string | null
           updated_at: string
           user_id: string
+          user_mobile: string | null
+          user_name: string | null
           vehicle_category: string
           vehicle_number: string
           vehicle_status: string
@@ -80,6 +88,8 @@ export type Database = {
           purpose_of_visit?: string | null
           updated_at?: string
           user_id: string
+          user_mobile?: string | null
+          user_name?: string | null
           vehicle_category: string
           vehicle_number: string
           vehicle_status: string
@@ -92,6 +102,8 @@ export type Database = {
           purpose_of_visit?: string | null
           updated_at?: string
           user_id?: string
+          user_mobile?: string | null
+          user_name?: string | null
           vehicle_category?: string
           vehicle_number?: string
           vehicle_status?: string

@@ -1,27 +1,28 @@
 
 import { useState, useEffect } from 'react';
-import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Search, Filter } from 'lucide-react';
+import { FileText, Download, Search, Filter } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Navigation from '@/components/Navigation';
 
-interface ReportEntry {
+interface Entry {
   id: string;
   vehicle_number: string;
-  vehicle_status: string;
   vehicle_category: string;
-  owner_name: string;
+  vehicle_status: string;
+  owner_name: string | null;
   purpose_of_visit: string;
+  user_name: string | null;
+  user_mobile: string | null;
   created_at: string;
   companies: {
     name: string;
@@ -34,26 +35,30 @@ interface Company {
 }
 
 const Reports = () => {
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [filteredEntries, setFilteredEntries] = useState<Entry[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Filter states
   const [filters, setFilters] = useState({
-    fromDate: '',
-    toDate: '',
-    status: 'all',
-    companyId: 'all'
+    fromDate: new Date().toISOString().split('T')[0],
+    toDate: new Date().toISOString().split('T')[0],
+    status: '',
+    category: '',
+    companyId: ''
   });
-
+  
+  // Quick search state
   const [quickSearch, setQuickSearch] = useState({
     vehicleNumber: '',
     companyName: '',
     ownerName: ''
   });
 
-  const [reportData, setReportData] = useState<ReportEntry[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-
   useEffect(() => {
     fetchCompanies();
+    fetchEntries();
   }, []);
 
   const fetchCompanies = async () => {
@@ -70,12 +75,9 @@ const Reports = () => {
     }
   };
 
-  const handleSearch = async () => {
-    setLoading(true);
-    setHasSearched(true);
-
+  const fetchEntries = async () => {
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from('vehicle_entries')
         .select(`
           *,
@@ -85,60 +87,14 @@ const Reports = () => {
         `)
         .order('created_at', { ascending: false });
 
-      // Apply date filters
-      if (filters.fromDate) {
-        query = query.gte('created_at', `${filters.fromDate}T00:00:00`);
-      }
-      if (filters.toDate) {
-        query = query.lte('created_at', `${filters.toDate}T23:59:59`);
-      }
-
-      // Apply status filter
-      if (filters.status !== 'all') {
-        query = query.eq('vehicle_status', filters.status);
-      }
-
-      // Apply company filter
-      if (filters.companyId !== 'all') {
-        query = query.eq('company_id', filters.companyId);
-      }
-
-      const { data, error } = await query;
-
       if (error) throw error;
-
-      // Apply client-side quick search filters
-      let filteredData = data || [];
-      
-      if (quickSearch.vehicleNumber) {
-        filteredData = filteredData.filter(entry =>
-          entry.vehicle_number.toLowerCase().includes(quickSearch.vehicleNumber.toLowerCase())
-        );
-      }
-
-      if (quickSearch.companyName) {
-        filteredData = filteredData.filter(entry =>
-          entry.companies?.name?.toLowerCase().includes(quickSearch.companyName.toLowerCase())
-        );
-      }
-
-      if (quickSearch.ownerName) {
-        filteredData = filteredData.filter(entry =>
-          entry.owner_name?.toLowerCase().includes(quickSearch.ownerName.toLowerCase())
-        );
-      }
-
-      setReportData(filteredData);
-      
-      toast({
-        title: "Success!",
-        description: `Found ${filteredData.length} records matching your criteria.`,
-      });
-    } catch (error: any) {
-      console.error('Error fetching report data:', error);
+      setEntries(data || []);
+      setFilteredEntries(data || []);
+    } catch (error) {
+      console.error('Error fetching entries:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch report data.",
+        description: "Failed to load entries.",
         variant: "destructive"
       });
     } finally {
@@ -146,102 +102,149 @@ const Reports = () => {
     }
   };
 
-  const handleDownloadExcel = () => {
-    if (reportData.length === 0) {
-      toast({
-        title: "No Data",
-        description: "Please search for data first before exporting.",
-        variant: "destructive"
-      });
-      return;
+  const handleSearch = () => {
+    let filtered = [...entries];
+
+    // Apply date filters
+    if (filters.fromDate) {
+      filtered = filtered.filter(entry => 
+        new Date(entry.created_at) >= new Date(filters.fromDate)
+      );
+    }
+    if (filters.toDate) {
+      const toDate = new Date(filters.toDate);
+      toDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(entry => 
+        new Date(entry.created_at) <= toDate
+      );
     }
 
-    const exportData = reportData.map((entry, index) => ({
-      'S.No.': index + 1,
+    // Apply status filter
+    if (filters.status) {
+      filtered = filtered.filter(entry => entry.vehicle_status === filters.status);
+    }
+
+    // Apply category filter
+    if (filters.category) {
+      filtered = filtered.filter(entry => entry.vehicle_category === filters.category);
+    }
+
+    // Apply company filter
+    if (filters.companyId) {
+      filtered = filtered.filter(entry => entry.companies?.name === companies.find(c => c.id === filters.companyId)?.name);
+    }
+
+    // Apply quick search filters
+    if (quickSearch.vehicleNumber) {
+      filtered = filtered.filter(entry => 
+        entry.vehicle_number.toLowerCase().includes(quickSearch.vehicleNumber.toLowerCase())
+      );
+    }
+    if (quickSearch.companyName) {
+      filtered = filtered.filter(entry => 
+        entry.companies?.name?.toLowerCase().includes(quickSearch.companyName.toLowerCase())
+      );
+    }
+    if (quickSearch.ownerName) {
+      filtered = filtered.filter(entry => 
+        entry.owner_name?.toLowerCase().includes(quickSearch.ownerName.toLowerCase())
+      );
+    }
+
+    setFilteredEntries(filtered);
+    
+    toast({
+      title: "Search Complete",
+      description: `Found ${filtered.length} matching entries.`,
+      className: "bg-blue-50 border-blue-200 text-blue-800"
+    });
+  };
+
+  const exportToExcel = () => {
+    const exportData = filteredEntries.map(entry => ({
       'Vehicle Number': entry.vehicle_number,
-      'Status': entry.vehicle_status,
       'Category': entry.vehicle_category,
+      'Status': entry.vehicle_status,
       'Company': entry.companies?.name || 'N/A',
-      'Purpose': entry.purpose_of_visit || 'N/A',
-      'Owner': entry.owner_name || 'N/A',
+      'Owner Name': entry.owner_name || 'N/A',
+      'Purpose': entry.purpose_of_visit,
+      'User Name': entry.user_name || 'N/A',
+      'User Mobile': entry.user_mobile || 'N/A',
       'Date & Time': new Date(entry.created_at).toLocaleString()
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Vehicle Entries');
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Vehicle Entries');
     
-    const fileName = `vehicle_entries_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(workbook, fileName);
-
+    XLSX.writeFile(wb, `vehicle-entries-${new Date().toISOString().split('T')[0]}.xlsx`);
+    
     toast({
-      title: "Success!",
-      description: "Excel file downloaded successfully.",
+      title: "Excel Export Complete",
+      description: "Your report has been downloaded successfully.",
+      className: "bg-green-50 border-green-200 text-green-800"
     });
   };
 
-  const handleDownloadPDF = () => {
-    if (reportData.length === 0) {
-      toast({
-        title: "No Data",
-        description: "Please search for data first before exporting.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const exportToPDF = () => {
     const doc = new jsPDF();
     
-    // Add title
-    doc.setFontSize(16);
-    doc.text('Vehicle Entries Report', 14, 15);
+    doc.setFontSize(18);
+    doc.text('Vehicle Entries Report', 14, 22);
     
-    // Add generation date
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 25);
+    doc.setFontSize(12);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 32);
+    doc.text(`Total Entries: ${filteredEntries.length}`, 14, 40);
 
-    // Prepare table data
-    const tableData = reportData.map((entry, index) => [
-      index + 1,
+    const tableData = filteredEntries.map(entry => [
       entry.vehicle_number,
-      entry.vehicle_status,
       entry.vehicle_category,
+      entry.vehicle_status,
       entry.companies?.name || 'N/A',
-      entry.purpose_of_visit || 'N/A',
       entry.owner_name || 'N/A',
-      new Date(entry.created_at).toLocaleString()
+      entry.purpose_of_visit,
+      entry.user_name || 'N/A',
+      entry.user_mobile || 'N/A',
+      new Date(entry.created_at).toLocaleDateString()
     ]);
 
-    // Add table
     autoTable(doc, {
-      head: [['S.No.', 'Vehicle No.', 'Status', 'Category', 'Company', 'Purpose', 'Owner', 'Date & Time']],
+      head: [['Vehicle No.', 'Category', 'Status', 'Company', 'Owner', 'Purpose', 'User', 'Mobile', 'Date']],
       body: tableData,
-      startY: 35,
+      startY: 50,
       styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 15 },
+        2: { cellWidth: 15 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 20 },
+        6: { cellWidth: 25 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20 }
+      }
     });
 
-    const fileName = `vehicle_entries_${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(fileName);
-
-    toast({
-      title: "Success!",
-      description: "PDF file downloaded successfully.",
-    });
-  };
-
-  const getSummary = () => {
-    const currentlyIn = reportData.filter(entry => entry.vehicle_status === 'IN').length;
-    const currentlyOut = reportData.filter(entry => entry.vehicle_status === 'OUT').length;
+    doc.save(`vehicle-entries-${new Date().toISOString().split('T')[0]}.pdf`);
     
-    return {
-      currentlyIn,
-      currentlyOut,
-      totalRecords: reportData.length
-    };
+    toast({
+      title: "PDF Export Complete",
+      description: "Your report has been downloaded successfully.",
+      className: "bg-green-50 border-green-200 text-green-800"
+    });
   };
 
-  const summary = getSummary();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">Loading reports...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -249,227 +252,211 @@ const Reports = () => {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Reports & Tracking</h1>
-          <p className="text-gray-600 mt-2">Filter, search and export vehicle entry data</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Reports & Analytics
+          </h1>
+          <p className="text-gray-600">
+            Generate and export detailed vehicle entry reports
+          </p>
         </div>
 
-        <Tabs defaultValue="filters" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="filters">Advanced Filters</TabsTrigger>
-            <TabsTrigger value="quick-search">Quick Search</TabsTrigger>
-          </TabsList>
+        {/* Advanced Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Advanced Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="fromDate">From Date</Label>
+                <Input
+                  id="fromDate"
+                  type="date"
+                  value={filters.fromDate}
+                  onChange={(e) => setFilters(prev => ({ ...prev, fromDate: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="toDate">To Date</Label>
+                <Input
+                  id="toDate"
+                  type="date"
+                  value={filters.toDate}
+                  onChange={(e) => setFilters(prev => ({ ...prev, toDate: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="IN">Vehicle IN</SelectItem>
+                    <SelectItem value="OUT">Vehicle OUT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={filters.category} onValueChange={(value) => setFilters(prev => ({ ...prev, category: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="Car">Car</SelectItem>
+                    <SelectItem value="Bike">Bike</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Company</Label>
+                <Select value={filters.companyId} onValueChange={(value) => setFilters(prev => ({ ...prev, companyId: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All companies" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">All Companies</SelectItem>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-          <TabsContent value="filters">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  Advanced Filters
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <Label>From Date</Label>
-                    <Input
-                      type="date"
-                      value={filters.fromDate}
-                      onChange={(e) => setFilters(prev => ({ ...prev, fromDate: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>To Date</Label>
-                    <Input
-                      type="date"
-                      value={filters.toDate}
-                      onChange={(e) => setFilters(prev => ({ ...prev, toDate: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="IN">Vehicle IN</SelectItem>
-                        <SelectItem value="OUT">Vehicle OUT</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Company</Label>
-                    <Select value={filters.companyId} onValueChange={(value) => setFilters(prev => ({ ...prev, companyId: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Companies</SelectItem>
-                        {companies.map((company) => (
-                          <SelectItem key={company.id} value={company.id}>
-                            {company.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <Button onClick={handleSearch} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-                  <Search className="h-4 w-4 mr-2" />
-                  {loading ? "Searching..." : "Search Records"}
+        {/* Quick Search */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              Quick Search
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="space-y-2">
+                <Label htmlFor="vehicleSearch">Vehicle Number</Label>
+                <Input
+                  id="vehicleSearch"
+                  placeholder="Search by vehicle number..."
+                  value={quickSearch.vehicleNumber}
+                  onChange={(e) => setQuickSearch(prev => ({ ...prev, vehicleNumber: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="companySearch">Company Name</Label>
+                <Input
+                  id="companySearch"
+                  placeholder="Search by company name..."
+                  value={quickSearch.companyName}
+                  onChange={(e) => setQuickSearch(prev => ({ ...prev, companyName: e.target.value }))}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="ownerSearch">Owner Name</Label>
+                <Input
+                  id="ownerSearch"
+                  placeholder="Search by owner name..."
+                  value={quickSearch.ownerName}
+                  onChange={(e) => setQuickSearch(prev => ({ ...prev, ownerName: e.target.value }))}
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button onClick={handleSearch} className="flex items-center gap-2">
+                <Search className="h-4 w-4" />
+                Search
+              </Button>
+              
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={exportToExcel} className="flex items-center gap-2">
+                  <Download className="h-4 w-4" />
+                  Excel
                 </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="quick-search">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Search className="h-5 w-5" />
-                  Quick Search
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="space-y-2">
-                    <Label>Vehicle Number</Label>
-                    <Input
-                      placeholder="Search by vehicle number"
-                      value={quickSearch.vehicleNumber}
-                      onChange={(e) => setQuickSearch(prev => ({ ...prev, vehicleNumber: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Company Name</Label>
-                    <Input
-                      placeholder="Search by company name"
-                      value={quickSearch.companyName}
-                      onChange={(e) => setQuickSearch(prev => ({ ...prev, companyName: e.target.value }))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Owner Name</Label>
-                    <Input
-                      placeholder="Search by owner name"
-                      value={quickSearch.ownerName}
-                      onChange={(e) => setQuickSearch(prev => ({ ...prev, ownerName: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <Button onClick={handleSearch} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
-                  <Search className="h-4 w-4 mr-2" />
-                  {loading ? "Searching..." : "Search Records"}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Export Buttons */}
-        {hasSearched && (
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="flex gap-4">
-                <Button onClick={handleDownloadExcel} className="bg-green-600 hover:bg-green-700">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export to Excel
-                </Button>
-                <Button onClick={handleDownloadPDF} variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Export to PDF
+                
+                <Button variant="outline" onClick={exportToPDF} className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  PDF
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Results */}
-        {hasSearched && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Search Results ({reportData.length} records found)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="text-center py-8">Searching...</div>
-              ) : (
-                <>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-2 font-medium text-gray-700">S.No.</th>
-                          <th className="text-left py-3 px-2 font-medium text-gray-700">Vehicle Number</th>
-                          <th className="text-left py-3 px-2 font-medium text-gray-700">Status</th>
-                          <th className="text-left py-3 px-2 font-medium text-gray-700">Category</th>
-                          <th className="text-left py-3 px-2 font-medium text-gray-700 hidden sm:table-cell">Company</th>
-                          <th className="text-left py-3 px-2 font-medium text-gray-700 hidden sm:table-cell">Purpose</th>
-                          <th className="text-left py-3 px-2 font-medium text-gray-700 hidden md:table-cell">Owner</th>
-                          <th className="text-left py-3 px-2 font-medium text-gray-700 hidden lg:table-cell">Date & Time</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reportData.map((entry, index) => (
-                          <tr key={entry.id} className="border-b hover:bg-gray-50">
-                            <td className="py-3 px-2">{index + 1}</td>
-                            <td className="py-3 px-2 font-mono text-sm">{entry.vehicle_number}</td>
-                            <td className="py-3 px-2">
-                              <Badge 
-                                variant={entry.vehicle_status === 'IN' ? 'default' : 'secondary'}
-                                className={entry.vehicle_status === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
-                              >
-                                {entry.vehicle_status}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-2">
-                              <Badge variant="outline">{entry.vehicle_category}</Badge>
-                            </td>
-                            <td className="py-3 px-2 hidden sm:table-cell text-sm">{entry.companies?.name || 'N/A'}</td>
-                            <td className="py-3 px-2 hidden sm:table-cell text-sm">{entry.purpose_of_visit || 'N/A'}</td>
-                            <td className="py-3 px-2 hidden md:table-cell text-sm">{entry.owner_name || 'N/A'}</td>
-                            <td className="py-3 px-2 hidden lg:table-cell text-sm">{new Date(entry.created_at).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {reportData.length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      No records found matching your search criteria.
-                    </div>
-                  )}
-
-                  {reportData.length > 0 && (
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                      <h3 className="font-medium text-gray-900 mb-2">Summary</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-600">Currently IN:</span>
-                          <span className="ml-2 font-medium text-green-600">{summary.currentlyIn}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Currently OUT:</span>
-                          <span className="ml-2 font-medium text-red-600">{summary.currentlyOut}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Total Records:</span>
-                          <span className="ml-2 font-medium">{summary.totalRecords}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-600">Search Date:</span>
-                          <span className="ml-2 font-medium">{new Date().toLocaleDateString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Search Results ({filteredEntries.length} entries)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-2 font-medium text-gray-700">Vehicle Number</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700">Category</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700">Status</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700 hidden sm:table-cell">Company</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700 hidden md:table-cell">Owner</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700 hidden lg:table-cell">User</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700 hidden xl:table-cell">Mobile</th>
+                    <th className="text-left py-3 px-2 font-medium text-gray-700 hidden lg:table-cell">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEntries.map((entry) => (
+                    <tr key={entry.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-2 font-mono text-sm">{entry.vehicle_number}</td>
+                      <td className="py-3 px-2">
+                        <Badge variant="outline">{entry.vehicle_category}</Badge>
+                      </td>
+                      <td className="py-3 px-2">
+                        <Badge 
+                          variant={entry.vehicle_status === 'IN' ? 'default' : 'secondary'}
+                          className={entry.vehicle_status === 'IN' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                        >
+                          {entry.vehicle_status}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-2 hidden sm:table-cell text-sm">{entry.companies?.name || 'N/A'}</td>
+                      <td className="py-3 px-2 hidden md:table-cell text-sm">{entry.owner_name || 'N/A'}</td>
+                      <td className="py-3 px-2 hidden lg:table-cell text-sm">{entry.user_name || 'N/A'}</td>
+                      <td className="py-3 px-2 hidden xl:table-cell text-sm">{entry.user_mobile || 'N/A'}</td>
+                      <td className="py-3 px-2 hidden lg:table-cell text-sm text-gray-600">
+                        {new Date(entry.created_at).toLocaleDateString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {filteredEntries.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No entries found matching your search criteria.
+                </div>
               )}
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

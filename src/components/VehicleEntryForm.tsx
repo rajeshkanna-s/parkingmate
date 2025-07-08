@@ -37,10 +37,14 @@ const VehicleEntryForm = () => {
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     fetchCompanies();
-  }, []);
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
 
   const fetchCompanies = async () => {
     try {
@@ -59,6 +63,90 @@ const VehicleEntryForm = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const fetchVehicleData = async (vehicleNumber: string) => {
+    if (!vehicleNumber.trim()) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('vehicle_entries')
+        .select(`
+          *,
+          companies (
+            id,
+            name
+          )
+        `)
+        .eq('vehicle_number', vehicleNumber.toUpperCase())
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+      return data?.[0] || null;
+    } catch (error) {
+      console.error('Error fetching vehicle data:', error);
+      return null;
+    }
+  };
+
+  const handleVehicleNumberChange = async (value: string) => {
+    // Allow only letters and numbers, max 13 characters
+    const sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 13);
+    
+    setFormData(prev => ({
+      ...prev,
+      vehicleNumber: sanitizedValue
+    }));
+
+    if (sanitizedValue.length >= 3) {
+      const vehicleData = await fetchVehicleData(sanitizedValue);
+      
+      if (vehicleData) {
+        // Auto-fill form with existing data
+        setFormData(prev => ({
+          ...prev,
+          vehicleCategory: vehicleData.vehicle_category || '',
+          companyId: vehicleData.company_id || '',
+          purposeOfVisit: vehicleData.purpose_of_visit || 'Job',
+          ownerName: vehicleData.owner_name || '',
+          // Toggle vehicle status
+          vehicleStatus: vehicleData.vehicle_status === 'IN' ? 'OUT' : 'IN'
+        }));
+
+        toast({
+          title: "Vehicle Found",
+          description: "Form auto-filled with existing vehicle data. Status toggled automatically.",
+          className: "bg-blue-50 border-blue-200"
+        });
+      }
+    }
+  };
+
+  const handleOwnerNameChange = (value: string) => {
+    // Allow only letters and spaces
+    const sanitizedValue = value.replace(/[^a-zA-Z\s]/g, '');
+    setFormData(prev => ({
+      ...prev,
+      ownerName: sanitizedValue
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -94,7 +182,9 @@ const VehicleEntryForm = () => {
           vehicle_category: formData.vehicleCategory,
           company_id: formData.companyId || null,
           purpose_of_visit: formData.purposeOfVisit,
-          owner_name: formData.ownerName || null
+          owner_name: formData.ownerName || null,
+          user_name: userProfile?.name || `${userProfile?.first_name || ''} ${userProfile?.last_name || ''}`.trim() || user.email,
+          user_mobile: userProfile?.mobile || null
         });
 
       if (error) throw error;
@@ -102,6 +192,7 @@ const VehicleEntryForm = () => {
       toast({
         title: "Success!",
         description: "Vehicle entry submitted successfully.",
+        className: "bg-green-50 border-green-200 text-green-800"
       });
       
       // Reset form
@@ -150,12 +241,14 @@ const VehicleEntryForm = () => {
               </Label>
               <Input
                 id="vehicleNumber"
-                placeholder="Enter vehicle number"
+                placeholder="Enter vehicle number (letters & numbers only)"
                 value={formData.vehicleNumber}
-                onChange={(e) => handleInputChange('vehicleNumber', e.target.value)}
-                className="w-full"
+                onChange={(e) => handleVehicleNumberChange(e.target.value)}
+                className="w-full uppercase"
+                maxLength={13}
                 required
               />
+              <p className="text-xs text-gray-500">Max 13 characters, letters and numbers only</p>
             </div>
 
             <div className="space-y-2">
@@ -229,11 +322,12 @@ const VehicleEntryForm = () => {
               </Label>
               <Input
                 id="ownerName"
-                placeholder="Enter owner name (optional)"
+                placeholder="Enter owner name (letters only)"
                 value={formData.ownerName}
-                onChange={(e) => handleInputChange('ownerName', e.target.value)}
+                onChange={(e) => handleOwnerNameChange(e.target.value)}
                 className="w-full"
               />
+              <p className="text-xs text-gray-500">Letters and spaces only</p>
             </div>
           </div>
 

@@ -1,126 +1,137 @@
 
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Car, BarChart, Search, Building2, Menu, X, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Car, BarChart3, Building2, Home, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useState, useEffect } from 'react';
 
 const Navigation = () => {
-  const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { signOut, user } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const [userProfile, setUserProfile] = useState<any>(null);
 
-  const navItems = [
-    { href: '/', label: 'Home', icon: Car },
-    { href: '/dashboard', label: 'Dashboard', icon: BarChart },
-    { href: '/reports', label: 'Reports', icon: Search },
-    { href: '/companies', label: 'Companies', icon: Building2 },
-  ];
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+    }
+  }, [user]);
 
-  const isActive = (href: string) => location.pathname === href;
-
-  const handleSignOut = async () => {
+  const fetchUserProfile = async () => {
+    if (!user) return;
+    
     try {
-      await signOut();
-      toast({
-        title: "Success!",
-        description: "Signed out successfully.",
-      });
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+      setUserProfile(data);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to sign out.",
-        variant: "destructive"
-      });
+      console.error('Error fetching user profile:', error);
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
+
+  const displayName = userProfile?.name || 
+    `${userProfile?.first_name || ''} ${userProfile?.last_name || ''}`.trim() || 
+    user?.email?.split('@')[0] || 
+    'User';
+
+  const navItems = [
+    { path: '/', icon: Home, label: 'Home' },
+    { path: '/dashboard', icon: BarChart3, label: 'Dashboard' },
+    { path: '/reports', icon: Car, label: 'Reports' },
+    { path: '/companies', icon: Building2, label: 'Companies' },
+  ];
+
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <div className="flex-shrink-0 flex items-center">
-              <Car className="h-8 w-8 text-blue-600 mr-2" />
-              <span className="font-bold text-xl text-gray-900">ParkingMate</span>
-            </div>
+            <Link to="/" className="flex items-center space-x-2">
+              <Car className="h-8 w-8 text-blue-600" />
+              <span className="text-xl font-bold text-gray-900">ParkingMate</span>
+            </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-4">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive(item.href)
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 mr-2" />
-                  {item.label}
-                </Link>
-              );
-            })}
-            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
-              <span className="text-sm text-gray-600">
-                {user?.email}
-              </span>
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
+          <div className="flex items-center space-x-4">
+            {/* Navigation Links */}
+            <div className="hidden md:flex space-x-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = location.pathname === item.path;
+                
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* User Info and Sign Out */}
+            <div className="flex items-center space-x-3 border-l pl-4">
+              <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700 font-medium">
+                  {displayName}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="flex items-center space-x-1"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
               </Button>
             </div>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
-        {isOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-white border-t">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={`flex items-center px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                      isActive(item.href)
-                        ? 'bg-blue-100 text-blue-700'
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
-                    }`}
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <Icon className="h-5 w-5 mr-3" />
-                    {item.label}
-                  </Link>
-                );
-              })}
-              <div className="px-3 py-2 border-t border-gray-200 mt-4">
-                <p className="text-sm text-gray-600 mb-2">{user?.email}</p>
-                <Button variant="outline" size="sm" className="w-full" onClick={handleSignOut}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Sign Out
-                </Button>
-              </div>
-            </div>
+        <div className="md:hidden border-t pt-2 pb-3">
+          <div className="flex space-x-1 overflow-x-auto">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = location.pathname === item.path;
+              
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
+                    isActive
+                      ? 'bg-blue-100 text-blue-600'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
           </div>
-        )}
+        </div>
       </div>
     </nav>
   );
