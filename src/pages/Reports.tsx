@@ -131,7 +131,12 @@ const Reports = () => {
 
     // Apply company filter
     if (filters.companyId) {
-      filtered = filtered.filter(entry => entry.companies?.name === companies.find(c => c.id === filters.companyId)?.name);
+      const selectedCompany = companies.find(c => c.id === filters.companyId);
+      if (selectedCompany) {
+        filtered = filtered.filter(entry => 
+          entry.companies?.name === selectedCompany.name
+        );
+      }
     }
 
     // Apply quick search filters
@@ -297,7 +302,7 @@ const Reports = () => {
                     <SelectValue placeholder="All statuses" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Statuses</SelectItem>
+                    <SelectItem value="all">All Statuses</SelectItem>
                     <SelectItem value="IN">Vehicle IN</SelectItem>
                     <SelectItem value="OUT">Vehicle OUT</SelectItem>
                   </SelectContent>
@@ -311,7 +316,7 @@ const Reports = () => {
                     <SelectValue placeholder="All categories" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     <SelectItem value="Car">Car</SelectItem>
                     <SelectItem value="Bike">Bike</SelectItem>
                   </SelectContent>
@@ -325,7 +330,7 @@ const Reports = () => {
                     <SelectValue placeholder="All companies" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Companies</SelectItem>
+                    <SelectItem value="all">All Companies</SelectItem>
                     {companies.map((company) => (
                       <SelectItem key={company.id} value={company.id}>
                         {company.name}

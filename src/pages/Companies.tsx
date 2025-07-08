@@ -136,7 +136,18 @@ const Companies = () => {
         .update({ name: editingValue.trim() })
         .eq('id', company.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          toast({
+            title: "Error",
+            description: "Company name already exists.",
+            variant: "destructive"
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
 
       setEditingIndex(null);
       setEditingValue('');
@@ -163,13 +174,29 @@ const Companies = () => {
   const handleDeleteCompany = async (index: number) => {
     const company = companies[index];
     
+    // Show confirmation dialog
+    if (!confirm(`Are you sure you want to delete "${company.name}"?`)) {
+      return;
+    }
+    
     try {
       const { error } = await supabase
         .from('companies')
         .delete()
         .eq('id', company.id);
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23503') {
+          toast({
+            title: "Cannot Delete",
+            description: "This company is still referenced in vehicle entries. Please remove those entries first.",
+            variant: "destructive"
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
       
       toast({
         title: "Success!",
@@ -258,6 +285,7 @@ const Companies = () => {
                         onChange={(e) => setEditingValue(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSaveEdit()}
                         className="flex-1"
+                        autoFocus
                       />
                       <Button onClick={handleSaveEdit} size="sm" className="bg-green-600 hover:bg-green-700">
                         Save
