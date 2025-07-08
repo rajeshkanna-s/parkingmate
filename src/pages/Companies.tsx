@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Company {
   id: string;
   name: string;
-  user_id: string;
+  user_id: string | null;
   created_at: string;
 }
 
