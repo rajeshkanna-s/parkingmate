@@ -81,6 +81,16 @@ const Companies = () => {
       return;
     }
 
+    // Check if trying to add "Others" which is reserved
+    if (newCompany.trim().toLowerCase() === 'others') {
+      toast({
+        title: "Error",
+        description: "Company name 'Others' is reserved and cannot be added.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('companies')
@@ -124,6 +134,16 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "Company name cannot be empty.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if trying to rename to "Others" which is reserved
+    if (editingValue.trim().toLowerCase() === 'others') {
+      toast({
+        title: "Error",
+        description: "Company name 'Others' is reserved and cannot be used.",
         variant: "destructive"
       });
       return;
@@ -180,12 +200,15 @@ const Companies = () => {
     }
     
     try {
+      console.log('Attempting to delete company:', company.id, company.name);
+      
       const { error } = await supabase
         .from('companies')
         .delete()
         .eq('id', company.id);
 
       if (error) {
+        console.error('Delete error:', error);
         if (error.code === '23503') {
           toast({
             title: "Cannot Delete",
@@ -197,6 +220,11 @@ const Companies = () => {
         }
         return;
       }
+      
+      console.log('Company deleted successfully');
+      
+      // Manually update the local state to reflect the deletion
+      setCompanies(prevCompanies => prevCompanies.filter(c => c.id !== company.id));
       
       toast({
         title: "Success!",
@@ -268,11 +296,25 @@ const Companies = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5" />
-              Company List ({companies.length})
+              Company List ({companies.length + 1}) {/* +1 for Others */}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
+              {/* Static "Others" entry */}
+              <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="text-sm bg-blue-100 text-blue-800">
+                    Static
+                  </Badge>
+                  <span className="text-gray-900 font-medium">Others</span>
+                  <span className="text-sm text-blue-600">(Default option)</span>
+                </div>
+                <div className="text-sm text-gray-500">
+                  Cannot be edited or removed
+                </div>
+              </div>
+
               {companies.map((company, index) => (
                 <div
                   key={company.id}
@@ -334,7 +376,7 @@ const Companies = () => {
             <div className="mt-6 p-4 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
                 <strong>Note:</strong> Changes to the company list will be immediately reflected in the vehicle entry form dropdown.
-                The "Others" option is always available by default.
+                The "Others" option is always available by default and cannot be removed.
               </p>
             </div>
           </CardContent>
