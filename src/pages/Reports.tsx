@@ -305,7 +305,7 @@ const Reports = () => {
         </div>
 
         {/* Advanced Filters */}
-        <Card className="mb-6">
+        <Card className="mb-6 overflow-x-hidden max-w-full">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />

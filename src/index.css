@@ -103,3 +103,32 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Fix: Hide invisible Radix UI overlays on mobile that block pointer events for dropdowns */
+@media (max-width: 640px) {
+  [style*="pointer-events: none"][style*="position: fixed"][style*="opacity: 0"] {
+    display: none !important;
+  }
+}
+
+.max-w-full {
+  max-width: 70%;
+}
+
+.w-full {
+  width: 90%;
+}
+/* Project-wide mobile fix: force body and main containers to stay mobile-responsive when dropdowns are open */
+@media (max-width: 640px) {
+  body,
+  #root,
+  .main,
+  .container,
+  .w-full,
+  .max-w-full {
+    max-width: 100vw !important;
+    /* width: 100vw !important; */
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
+  }
+}

@@ -244,7 +244,7 @@ const VehicleEntryForm = () => {
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-2xl mx-auto overflow-x-hidden max-w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-xl">
           <Car className="h-6 w-6 text-blue-600" />
@@ -278,7 +278,7 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                   <SelectItem value="IN">Vehicle IN</SelectItem>
                   <SelectItem value="OUT">Vehicle OUT</SelectItem>
                 </SelectContent>
@@ -293,7 +293,7 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                   <SelectItem value="Car">Car</SelectItem>
                   <SelectItem value="Bike">Bike</SelectItem>
                 </SelectContent>
@@ -308,7 +308,7 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                   <SelectItem value="others">Others</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
@@ -327,7 +327,7 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                   <SelectItem value="To Meet Someone">To Meet Someone</SelectItem>
                   <SelectItem value="Job">Job</SelectItem>
                   <SelectItem value="Interview">Interview</SelectItem>

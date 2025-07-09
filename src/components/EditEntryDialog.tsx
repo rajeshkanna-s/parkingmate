@@ -172,7 +172,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto overflow-x-hidden max-w-full">
         <DialogHeader>
           <DialogTitle>Edit Vehicle Entry</DialogTitle>
         </DialogHeader>
@@ -198,7 +198,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                 <SelectItem value="Car">Car</SelectItem>
                 <SelectItem value="Bike">Bike</SelectItem>
               </SelectContent>
@@ -214,7 +214,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                 <SelectItem value="IN">Vehicle IN</SelectItem>
                 <SelectItem value="OUT">Vehicle OUT</SelectItem>
               </SelectContent>
@@ -230,7 +230,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                 <SelectItem value="others">Others</SelectItem>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
@@ -260,7 +260,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg z-[9999] max-h-[200px] overflow-y-auto">
+              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
                 <SelectItem value="Work">Work</SelectItem>
                 <SelectItem value="Meeting">Meeting</SelectItem>
                 <SelectItem value="Delivery">Delivery</SelectItem>
