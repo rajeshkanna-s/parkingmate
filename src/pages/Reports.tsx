@@ -13,6 +13,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Navigation from '@/components/Navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Entry {
   id: string;
@@ -35,6 +36,7 @@ interface Company {
 }
 
 const Reports = () => {
+  const { user } = useAuth();
   const [entries, setEntries] = useState<Entry[]>([]);
   const [filteredEntries, setFilteredEntries] = useState<Entry[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -57,15 +59,20 @@ const Reports = () => {
   });
 
   useEffect(() => {
-    fetchCompanies();
-    fetchEntries();
-  }, []);
+    if (user) {
+      fetchCompanies();
+      fetchEntries();
+    }
+  }, [user]);
 
   const fetchCompanies = async () => {
+    if (!user) return;
+
     try {
       const { data, error } = await supabase
         .from('companies')
         .select('id, name')
+        .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
@@ -76,6 +83,8 @@ const Reports = () => {
   };
 
   const fetchEntries = async () => {
+    if (!user) return;
+
     try {
       const { data, error } = await supabase
         .from('vehicle_entries')
@@ -85,6 +94,7 @@ const Reports = () => {
             name
           )
         `)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -170,7 +180,7 @@ const Reports = () => {
       'Vehicle Number': entry.vehicle_number,
       'Category': entry.vehicle_category,
       'Status': entry.vehicle_status,
-      'Company': entry.companies?.name || 'N/A',
+      'Company': entry.companies?.name || 'Others',
       'Owner Name': entry.owner_name || 'N/A',
       'Purpose': entry.purpose_of_visit,
       'User Name': entry.user_name || 'N/A',
@@ -205,7 +215,7 @@ const Reports = () => {
       entry.vehicle_number,
       entry.vehicle_category,
       entry.vehicle_status,
-      entry.companies?.name || 'N/A',
+      entry.companies?.name || 'Others',
       entry.owner_name || 'N/A',
       entry.purpose_of_visit,
       entry.user_name || 'N/A',
@@ -239,6 +249,17 @@ const Reports = () => {
       className: "bg-green-50 border-green-200 text-green-800"
     });
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">Please log in to view reports.</div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -391,12 +412,22 @@ const Reports = () => {
               </Button>
               
               <div className="flex gap-2">
-                <Button variant="outline" onClick={exportToExcel} className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={exportToExcel} 
+                  className="flex items-center gap-2"
+                  disabled={filteredEntries.length === 0}
+                >
                   <Download className="h-4 w-4" />
                   Excel
                 </Button>
                 
-                <Button variant="outline" onClick={exportToPDF} className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={exportToPDF} 
+                  className="flex items-center gap-2"
+                  disabled={filteredEntries.length === 0}
+                >
                   <FileText className="h-4 w-4" />
                   PDF
                 </Button>

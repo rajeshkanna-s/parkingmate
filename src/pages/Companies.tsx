@@ -111,6 +111,20 @@ const Companies = () => {
       return;
     }
 
+    // Check for duplicate company names for this user
+    const existingCompany = companies.find(
+      company => company.name.toLowerCase() === newCompany.trim().toLowerCase()
+    );
+
+    if (existingCompany) {
+      toast({
+        title: "Error",
+        description: "You have already added this company name.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('companies')
@@ -119,18 +133,7 @@ const Companies = () => {
           user_id: user.id
         });
 
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: "Error",
-            description: "Company already exists in your list.",
-            variant: "destructive"
-          });
-        } else {
-          throw error;
-        }
-        return;
-      }
+      if (error) throw error;
 
       setNewCompany('');
       toast({
@@ -174,6 +177,22 @@ const Companies = () => {
       return;
     }
 
+    // Check for duplicate company names for this user (excluding current one)
+    const existingCompany = companies.find(
+      (company, index) => 
+        index !== editingIndex && 
+        company.name.toLowerCase() === editingValue.trim().toLowerCase()
+    );
+
+    if (existingCompany) {
+      toast({
+        title: "Error",
+        description: "You already have a company with this name.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       const company = companies[editingIndex!];
       const { error } = await supabase
@@ -182,18 +201,7 @@ const Companies = () => {
         .eq('id', company.id)
         .eq('user_id', user.id);
 
-      if (error) {
-        if (error.code === '23505') {
-          toast({
-            title: "Error",
-            description: "Company name already exists in your list.",
-            variant: "destructive"
-          });
-        } else {
-          throw error;
-        }
-        return;
-      }
+      if (error) throw error;
 
       setEditingIndex(null);
       setEditingValue('');
@@ -414,6 +422,7 @@ const Companies = () => {
               <p className="text-sm text-blue-800">
                 <strong>Note:</strong> Changes to your company list will be immediately reflected in the vehicle entry form dropdown.
                 The "Others" option is always available by default and cannot be removed. Only you can see and manage your companies.
+                You cannot add duplicate company names to your list.
               </p>
             </div>
           </CardContent>

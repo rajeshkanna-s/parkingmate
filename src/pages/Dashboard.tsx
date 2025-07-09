@@ -6,6 +6,7 @@ import { Car, Users, Building2, TrendingUp, Calendar } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
 import Navigation from '@/components/Navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardStats {
   totalEntries: number;
@@ -16,6 +17,7 @@ interface DashboardStats {
 }
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalEntries: 0,
     vehiclesIn: 0,
@@ -27,15 +29,19 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
 
   const fetchDashboardData = async () => {
+    if (!user) return;
+
     try {
-      // Fetch basic stats
+      // Fetch user-specific vehicle entries
       const [entriesResponse, companiesResponse] = await Promise.all([
-        supabase.from('vehicle_entries').select('*'),
-        supabase.from('companies').select('*')
+        supabase.from('vehicle_entries').select('*').eq('user_id', user.id),
+        supabase.from('companies').select('*').eq('user_id', user.id)
       ]);
 
       if (entriesResponse.error) throw entriesResponse.error;
@@ -80,7 +86,7 @@ const Dashboard = () => {
         monthlyData
       });
 
-      // Fetch recent entries with company info
+      // Fetch recent user-specific entries with company info
       const { data: recentData, error: recentError } = await supabase
         .from('vehicle_entries')
         .select(`
@@ -89,6 +95,7 @@ const Dashboard = () => {
             name
           )
         `)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -101,6 +108,17 @@ const Dashboard = () => {
       setLoading(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center">Please log in to view the dashboard.</div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

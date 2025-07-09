@@ -30,7 +30,7 @@ const VehicleEntryForm = () => {
     vehicleNumber: '',
     vehicleStatus: '',
     vehicleCategory: '',
-    companyId: '',
+    companyId: 'others',
     purposeOfVisit: 'Job',
     ownerName: ''
   });
@@ -40,17 +40,20 @@ const VehicleEntryForm = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
-    fetchCompanies();
     if (user) {
+      fetchCompanies();
       fetchUserProfile();
     }
   }, [user]);
 
   const fetchCompanies = async () => {
+    if (!user) return;
+
     try {
       const { data, error } = await supabase
         .from('companies')
         .select('id, name')
+        .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
@@ -83,7 +86,7 @@ const VehicleEntryForm = () => {
   };
 
   const fetchVehicleData = async (vehicleNumber: string) => {
-    if (!vehicleNumber.trim()) return null;
+    if (!vehicleNumber.trim() || !user) return null;
 
     try {
       const { data, error } = await supabase
@@ -96,6 +99,7 @@ const VehicleEntryForm = () => {
           )
         `)
         .eq('vehicle_number', vehicleNumber.toUpperCase())
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -124,7 +128,7 @@ const VehicleEntryForm = () => {
         setFormData(prev => ({
           ...prev,
           vehicleCategory: vehicleData.vehicle_category || '',
-          companyId: vehicleData.company_id || '',
+          companyId: vehicleData.company_id || 'others',
           purposeOfVisit: vehicleData.purpose_of_visit || 'Job',
           ownerName: vehicleData.owner_name || '',
           // Toggle vehicle status
@@ -180,7 +184,7 @@ const VehicleEntryForm = () => {
           vehicle_number: formData.vehicleNumber,
           vehicle_status: formData.vehicleStatus,
           vehicle_category: formData.vehicleCategory,
-          company_id: formData.companyId || null,
+          company_id: formData.companyId === 'others' ? null : formData.companyId,
           purpose_of_visit: formData.purposeOfVisit,
           owner_name: formData.ownerName || null,
           user_name: userProfile?.name || `${userProfile?.first_name || ''} ${userProfile?.last_name || ''}`.trim() || user.email,
@@ -200,7 +204,7 @@ const VehicleEntryForm = () => {
         vehicleNumber: '',
         vehicleStatus: '',
         vehicleCategory: '',
-        companyId: '',
+        companyId: 'others',
         purposeOfVisit: 'Job',
         ownerName: ''
       });
@@ -223,6 +227,16 @@ const VehicleEntryForm = () => {
       [field]: value
     }));
   };
+
+  if (!user) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="p-6">
+          <div className="text-center">Please log in to submit vehicle entries.</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -290,6 +304,7 @@ const VehicleEntryForm = () => {
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="others">Others</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
                       {company.name}

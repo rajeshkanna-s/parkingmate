@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import EditEntryDialog from './EditEntryDialog';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Entry {
   id: string;
@@ -23,6 +23,7 @@ interface Entry {
 }
 
 const RecentEntries = () => {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,11 +31,15 @@ const RecentEntries = () => {
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchEntries();
-    subscribeToChanges();
-  }, []);
+    if (user) {
+      fetchEntries();
+      subscribeToChanges();
+    }
+  }, [user]);
 
   const fetchEntries = async () => {
+    if (!user) return;
+
     try {
       const { data, error } = await supabase
         .from('vehicle_entries')
@@ -44,6 +49,7 @@ const RecentEntries = () => {
             name
           )
         `)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(10);
 
@@ -62,6 +68,8 @@ const RecentEntries = () => {
   };
 
   const subscribeToChanges = () => {
+    if (!user) return;
+
     const channel = supabase
       .channel('vehicle_entries_changes')
       .on(
@@ -69,7 +77,8 @@ const RecentEntries = () => {
         {
           event: '*',
           schema: 'public',
-          table: 'vehicle_entries'
+          table: 'vehicle_entries',
+          filter: `user_id=eq.${user.id}`
         },
         () => {
           console.log('Vehicle entries changed, refetching...');
@@ -97,6 +106,16 @@ const RecentEntries = () => {
   const handleEditSuccess = () => {
     fetchEntries();
   };
+
+  if (!user) {
+    return (
+      <Card className="w-full max-w-6xl mx-auto mt-8">
+        <CardContent className="p-6">
+          <div className="text-center">Please log in to view recent entries.</div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (loading) {
     return (
@@ -156,7 +175,7 @@ const RecentEntries = () => {
                         {entry.vehicle_status}
                       </Badge>
                     </td>
-                    <td className="py-3 px-2 hidden sm:table-cell text-sm">{entry.companies?.name || 'N/A'}</td>
+                    <td className="py-3 px-2 hidden sm:table-cell text-sm">{entry.companies?.name || 'Others'}</td>
                     <td className="py-3 px-2 hidden md:table-cell text-sm">{entry.owner_name || 'N/A'}</td>
                     <td className="py-3 px-2 hidden lg:table-cell text-sm text-gray-600">
                       {new Date(entry.created_at).toLocaleString()}
