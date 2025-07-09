@@ -13,9 +13,6 @@ const Index = () => {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Welcome to ParkingMate
           </h1>
-          <p className="text-xl text-gray-600">
-            Efficient vehicle tracking for modern parking management
-          </p>
         </div>
 
         <VehicleEntryForm />
