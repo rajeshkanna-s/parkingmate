@@ -116,7 +116,7 @@ All colors MUST be HSL.
 }
 
 .w-full {
-  width: 90%;
+  width: 100%;
 }
 /* Project-wide mobile fix: force body and main containers to stay mobile-responsive when dropdowns are open */
 @media (max-width: 640px) {
