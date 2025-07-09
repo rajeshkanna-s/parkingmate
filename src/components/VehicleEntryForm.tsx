@@ -278,7 +278,10 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+
+
+                <SelectContent>
                   <SelectItem value="IN">Vehicle IN</SelectItem>
                   <SelectItem value="OUT">Vehicle OUT</SelectItem>
                 </SelectContent>
@@ -293,7 +296,11 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+
+
+                <SelectContent>
+
                   <SelectItem value="Car">Car</SelectItem>
                   <SelectItem value="Bike">Bike</SelectItem>
                 </SelectContent>
@@ -308,7 +315,11 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+
+
+                <SelectContent>
+
                   <SelectItem value="others">Others</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
@@ -327,7 +338,10 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+
+                <SelectContent>
+
                   <SelectItem value="To Meet Someone">To Meet Someone</SelectItem>
                   <SelectItem value="Job">Job</SelectItem>
                   <SelectItem value="Interview">Interview</SelectItem>

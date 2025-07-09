@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -198,7 +199,11 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+
+
+              <SelectContent>
+
                 <SelectItem value="Car">Car</SelectItem>
                 <SelectItem value="Bike">Bike</SelectItem>
               </SelectContent>
@@ -214,7 +219,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+=======
+              <SelectContent>
+
                 <SelectItem value="IN">Vehicle IN</SelectItem>
                 <SelectItem value="OUT">Vehicle OUT</SelectItem>
               </SelectContent>
@@ -230,7 +238,11 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+
+
+              <SelectContent>
+
                 <SelectItem value="others">Others</SelectItem>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
@@ -260,7 +272,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-white border shadow-lg max-h-[200px] overflow-y-auto">
+
+
+              <SelectContent>
+
                 <SelectItem value="Work">Work</SelectItem>
                 <SelectItem value="Meeting">Meeting</SelectItem>
                 <SelectItem value="Delivery">Delivery</SelectItem>
