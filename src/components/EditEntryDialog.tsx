@@ -173,7 +173,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Vehicle Entry</DialogTitle>
         </DialogHeader>
@@ -196,10 +196,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.vehicle_category} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_category: value }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white z-[100] shadow-lg border">
                 <SelectItem value="Car">Car</SelectItem>
                 <SelectItem value="Bike">Bike</SelectItem>
               </SelectContent>
@@ -212,10 +212,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.vehicle_status} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_status: value }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white z-[100] shadow-lg border">
                 <SelectItem value="IN">Vehicle IN</SelectItem>
                 <SelectItem value="OUT">Vehicle OUT</SelectItem>
               </SelectContent>
@@ -228,10 +228,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.company_id} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, company_id: value }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white z-[100] shadow-lg border max-h-[200px] overflow-y-auto">
                 <SelectItem value="others">Others</SelectItem>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
@@ -258,10 +258,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.purpose_of_visit} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, purpose_of_visit: value }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white z-[100] shadow-lg border">
                 <SelectItem value="Work">Work</SelectItem>
                 <SelectItem value="Meeting">Meeting</SelectItem>
                 <SelectItem value="Delivery">Delivery</SelectItem>

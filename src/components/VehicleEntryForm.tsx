@@ -63,7 +63,8 @@ const VehicleEntryForm = () => {
       toast({
         title: "Error",
         description: "Failed to load companies.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     }
   };
@@ -138,7 +139,8 @@ const VehicleEntryForm = () => {
         toast({
           title: "Vehicle Found",
           description: "Form auto-filled with existing vehicle data. Status toggled automatically.",
-          className: "bg-blue-50 border-blue-200"
+          className: "bg-blue-50 border-blue-200",
+          duration: 3000
         });
       }
     }
@@ -160,7 +162,8 @@ const VehicleEntryForm = () => {
       toast({
         title: "Error",
         description: "Please fill in all mandatory fields.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -169,7 +172,8 @@ const VehicleEntryForm = () => {
       toast({
         title: "Error",
         description: "You must be logged in to submit entries.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -196,7 +200,8 @@ const VehicleEntryForm = () => {
       toast({
         title: "Success!",
         description: "Vehicle entry submitted successfully.",
-        className: "bg-green-50 border-green-200 text-green-800"
+        className: "bg-green-50 border-green-200 text-green-800",
+        duration: 2000
       });
       
       // Reset form
@@ -214,7 +219,8 @@ const VehicleEntryForm = () => {
       toast({
         title: "Error",
         description: error.message || "Failed to submit entry. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     } finally {
       setIsSubmitting(false);
@@ -270,10 +276,10 @@ const VehicleEntryForm = () => {
                 Vehicle Status *
               </Label>
               <Select value={formData.vehicleStatus} onValueChange={(value) => handleInputChange('vehicleStatus', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50 shadow-lg border">
                   <SelectItem value="IN">Vehicle IN</SelectItem>
                   <SelectItem value="OUT">Vehicle OUT</SelectItem>
                 </SelectContent>
@@ -285,10 +291,10 @@ const VehicleEntryForm = () => {
                 Vehicle Category *
               </Label>
               <Select value={formData.vehicleCategory} onValueChange={(value) => handleInputChange('vehicleCategory', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50 shadow-lg border">
                   <SelectItem value="Car">Car</SelectItem>
                   <SelectItem value="Bike">Bike</SelectItem>
                 </SelectContent>
@@ -300,10 +306,10 @@ const VehicleEntryForm = () => {
                 Company Name
               </Label>
               <Select value={formData.companyId} onValueChange={(value) => handleInputChange('companyId', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50 shadow-lg border max-h-[200px] overflow-y-auto">
                   <SelectItem value="others">Others</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
@@ -319,10 +325,10 @@ const VehicleEntryForm = () => {
                 Purpose of Visit
               </Label>
               <Select value={formData.purposeOfVisit} onValueChange={(value) => handleInputChange('purposeOfVisit', value)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50 shadow-lg border">
                   <SelectItem value="To Meet Someone">To Meet Someone</SelectItem>
                   <SelectItem value="Job">Job</SelectItem>
                   <SelectItem value="Interview">Interview</SelectItem>
