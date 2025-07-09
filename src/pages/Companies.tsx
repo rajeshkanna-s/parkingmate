@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,7 +49,8 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "Failed to load companies.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     } finally {
       setLoading(false);
@@ -87,7 +87,8 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "You must be logged in to add companies.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -96,7 +97,8 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "Please enter a company name.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -106,12 +108,13 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "Company name 'Others' is reserved and cannot be added.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
 
-    // Check for duplicate company names for this user
+    // Check for duplicate company names for this user only
     const existingCompany = companies.find(
       company => company.name.toLowerCase() === newCompany.trim().toLowerCase()
     );
@@ -120,7 +123,8 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "You have already added this company name.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -139,13 +143,15 @@ const Companies = () => {
       toast({
         title: "Success!",
         description: "Company added successfully.",
+        duration: 3000
       });
     } catch (error: any) {
       console.error('Error adding company:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to add company.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     }
   };
@@ -162,7 +168,8 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "Company name cannot be empty.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -172,7 +179,8 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "Company name 'Others' is reserved and cannot be used.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -188,7 +196,8 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "You already have a company with this name.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
       return;
     }
@@ -209,13 +218,15 @@ const Companies = () => {
       toast({
         title: "Success!",
         description: "Company updated successfully.",
+        duration: 3000
       });
     } catch (error: any) {
       console.error('Error updating company:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to update company.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     }
   };
@@ -250,7 +261,8 @@ const Companies = () => {
           toast({
             title: "Cannot Delete",
             description: "This company is still referenced in vehicle entries. Please remove those entries first.",
-            variant: "destructive"
+            variant: "destructive",
+            duration: 3000
           });
         } else {
           throw error;
@@ -263,13 +275,15 @@ const Companies = () => {
       toast({
         title: "Success!",
         description: `${company.name} has been removed.`,
+        duration: 3000
       });
     } catch (error: any) {
       console.error('Error deleting company:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to delete company.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     }
   };

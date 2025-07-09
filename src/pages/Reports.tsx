@@ -104,7 +104,8 @@ const Reports = () => {
       toast({
         title: "Error",
         description: "Failed to load entries.",
-        variant: "destructive"
+        variant: "destructive",
+        duration: 3000
       });
     } finally {
       setLoading(false);
@@ -145,6 +146,8 @@ const Reports = () => {
         filtered = filtered.filter(entry => 
           entry.companies?.name === selectedCompany.name
         );
+      } else if (filters.companyId === 'others') {
+        filtered = filtered.filter(entry => !entry.companies?.name);
       }
     }
 
@@ -170,7 +173,8 @@ const Reports = () => {
     toast({
       title: "Search Complete",
       description: `Found ${filtered.length} matching entries.`,
-      className: "bg-blue-50 border-blue-200 text-blue-800"
+      className: "bg-blue-50 border-blue-200 text-blue-800",
+      duration: 3000
     });
   };
 
@@ -201,7 +205,8 @@ const Reports = () => {
     toast({
       title: "Excel Export Complete",
       description: "Your report has been downloaded successfully.",
-      className: "bg-green-50 border-green-200 text-green-800"
+      className: "bg-green-50 border-green-200 text-green-800",
+      duration: 3000
     });
   };
 
@@ -218,6 +223,7 @@ const Reports = () => {
     const tableData = filteredEntries.map(entry => {
       const date = new Date(entry.created_at);
       const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+      const formattedTime = date.toLocaleTimeString('en-US', { hour12: true });
       
       return [
         entry.vehicle_number,
@@ -228,25 +234,27 @@ const Reports = () => {
         entry.purpose_of_visit,
         entry.user_name || 'N/A',
         entry.user_mobile || 'N/A',
-        formattedDate
+        formattedDate,
+        formattedTime
       ];
     });
 
     autoTable(doc, {
-      head: [['Vehicle No.', 'Category', 'Status', 'Company', 'Owner', 'Purpose', 'User', 'Mobile', 'Date']],
+      head: [['Vehicle No.', 'Category', 'Status', 'Company', 'Owner', 'Purpose', 'User', 'Mobile', 'Date', 'Time']],
       body: tableData,
       startY: 50,
-      styles: { fontSize: 8 },
+      styles: { fontSize: 7 },
       columnStyles: {
-        0: { cellWidth: 20 },
-        1: { cellWidth: 15 },
-        2: { cellWidth: 15 },
-        3: { cellWidth: 25 },
-        4: { cellWidth: 25 },
-        5: { cellWidth: 20 },
-        6: { cellWidth: 25 },
-        7: { cellWidth: 20 },
-        8: { cellWidth: 20 }
+        0: { cellWidth: 18 },
+        1: { cellWidth: 12 },
+        2: { cellWidth: 12 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 20 },
+        5: { cellWidth: 15 },
+        6: { cellWidth: 20 },
+        7: { cellWidth: 18 },
+        8: { cellWidth: 18 },
+        9: { cellWidth: 18 }
       }
     });
 
@@ -255,7 +263,8 @@ const Reports = () => {
     toast({
       title: "PDF Export Complete",
       description: "Your report has been downloaded successfully.",
-      className: "bg-green-50 border-green-200 text-green-800"
+      className: "bg-green-50 border-green-200 text-green-800",
+      duration: 3000
     });
   };
 
@@ -361,6 +370,7 @@ const Reports = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Companies</SelectItem>
+                    <SelectItem value="others">Others</SelectItem>
                     {companies.map((company) => (
                       <SelectItem key={company.id} value={company.id}>
                         {company.name}

@@ -9,6 +9,26 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface Company {
+  id: string;
+  name: string;
+}
+
+interface Entry {
+  id: string;
+  vehicle_number: string;
+  vehicle_category: string;
+  vehicle_status: string;
+  owner_name: string | null;
+  purpose_of_visit: string;
+  user_name: string | null;
+  user_mobile: string | null;
+  company_id: string | null;
+  companies: {
+    name: string;
+  } | null;
+}
+
 interface EditEntryDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -16,48 +36,41 @@ interface EditEntryDialogProps {
   onSuccess: () => void;
 }
 
-interface Company {
-  id: string;
-  name: string;
-}
-
-interface EntryData {
-  vehicle_number: string;
-  vehicle_status: string;
-  vehicle_category: string;
-  company_id: string | null;
-  purpose_of_visit: string;
-  owner_name: string | null;
-}
-
 const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialogProps) => {
   const { user } = useAuth();
-  const [formData, setFormData] = useState<EntryData>({
-    vehicle_number: '',
-    vehicle_status: '',
-    vehicle_category: '',
-    company_id: null,
-    purpose_of_visit: 'Job',
-    owner_name: null
-  });
+  const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    vehicle_number: '',
+    vehicle_category: 'Car',
+    vehicle_status: 'IN',
+    company_id: '',
+    owner_name: '',
+    purpose_of_visit: 'Work',
+    user_name: '',
+    user_mobile: ''
+  });
 
   useEffect(() => {
-    if (isOpen) {
+    if (user) {
       fetchCompanies();
-      if (entryId) {
-        fetchEntryData();
-      }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (isOpen && entryId) {
+      fetchEntry();
     }
   }, [isOpen, entryId]);
 
   const fetchCompanies = async () => {
+    if (!user) return;
+
     try {
       const { data, error } = await supabase
         .from('companies')
         .select('id, name')
+        .eq('user_id', user.id)
         .order('name');
 
       if (error) throw error;
@@ -67,223 +80,226 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
     }
   };
 
-  const fetchEntryData = async () => {
-    if (!entryId) return;
+  const fetchEntry = async () => {
+    if (!entryId || !user) return;
 
-    setIsLoading(true);
+    setLoading(true);
     try {
       const { data, error } = await supabase
         .from('vehicle_entries')
-        .select('*')
+        .select(`
+          *,
+          companies (
+            name
+          )
+        `)
         .eq('id', entryId)
+        .eq('user_id', user.id)
         .single();
 
       if (error) throw error;
-      
-      setFormData({
-        vehicle_number: data.vehicle_number || '',
-        vehicle_status: data.vehicle_status || '',
-        vehicle_category: data.vehicle_category || '',
-        company_id: data.company_id,
-        purpose_of_visit: data.purpose_of_visit || 'Job',
-        owner_name: data.owner_name
-      });
+
+      if (data) {
+        setFormData({
+          vehicle_number: data.vehicle_number,
+          vehicle_category: data.vehicle_category,
+          vehicle_status: data.vehicle_status,
+          company_id: data.company_id || 'others',
+          owner_name: data.owner_name || '',
+          purpose_of_visit: data.purpose_of_visit || 'Work',
+          user_name: data.user_name || '',
+          user_mobile: data.user_mobile || ''
+        });
+      }
     } catch (error) {
-      console.error('Error fetching entry data:', error);
+      console.error('Error fetching entry:', error);
       toast({
         title: "Error",
-        description: "Failed to load entry data.",
-        variant: "destructive"
+        description: "Failed to load entry details.",
+        variant: "destructive",
+        duration: 3000
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
-
-  const handleVehicleNumberChange = (value: string) => {
-    // Allow only letters and numbers, max 13 characters
-    const sanitizedValue = value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 13);
-    setFormData(prev => ({ ...prev, vehicle_number: sanitizedValue }));
-  };
-
-  const handleOwnerNameChange = (value: string) => {
-    // Allow only letters and spaces
-    const sanitizedValue = value.replace(/[^a-zA-Z\s]/g, '');
-    setFormData(prev => ({ ...prev, owner_name: sanitizedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.vehicle_number || !formData.vehicle_status || !formData.vehicle_category) {
-      toast({
-        title: "Error",
-        description: "Please fill in all mandatory fields.",
-        variant: "destructive"
-      });
-      return;
-    }
+    if (!entryId || !user) return;
 
-    if (!user || !entryId) return;
-
-    setIsSubmitting(true);
-    
+    setLoading(true);
     try {
+      const updateData = {
+        vehicle_number: formData.vehicle_number.toUpperCase(),
+        vehicle_category: formData.vehicle_category,
+        vehicle_status: formData.vehicle_status,
+        company_id: formData.company_id === 'others' ? null : formData.company_id,
+        owner_name: formData.owner_name || null,
+        purpose_of_visit: formData.purpose_of_visit,
+        user_name: formData.user_name || null,
+        user_mobile: formData.user_mobile || null,
+        updated_at: new Date().toISOString()
+      };
+
       const { error } = await supabase
         .from('vehicle_entries')
-        .update({
-          vehicle_number: formData.vehicle_number,
-          vehicle_status: formData.vehicle_status,
-          vehicle_category: formData.vehicle_category,
-          company_id: formData.company_id,
-          purpose_of_visit: formData.purpose_of_visit,
-          owner_name: formData.owner_name || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', entryId);
+        .update(updateData)
+        .eq('id', entryId)
+        .eq('user_id', user.id);
 
       if (error) throw error;
-      
+
       toast({
         title: "Success!",
         description: "Entry updated successfully.",
-        className: "bg-green-50 border-green-200 text-green-800"
+        duration: 3000
       });
-      
+
       onSuccess();
       onClose();
-      
     } catch (error: any) {
       console.error('Error updating entry:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update entry. Please try again.",
-        variant: "destructive"
+        description: error.message || "Failed to update entry.",
+        variant: "destructive",
+        duration: 3000
       });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Edit Vehicle Entry</DialogTitle>
         </DialogHeader>
         
-        {isLoading ? (
-          <div className="p-6 text-center">Loading entry data...</div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-4 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="vehicleNumber" className="text-sm font-medium">
-                  Vehicle Number *
-                </Label>
-                <Input
-                  id="vehicleNumber"
-                  value={formData.vehicle_number}
-                  onChange={(e) => handleVehicleNumberChange(e.target.value)}
-                  className="w-full uppercase"
-                  maxLength={13}
-                  required
-                />
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-vehicle-number">Vehicle Number</Label>
+            <Input
+              id="edit-vehicle-number"
+              value={formData.vehicle_number}
+              onChange={(e) => setFormData(prev => ({ ...prev, vehicle_number: e.target.value }))}
+              placeholder="Enter vehicle number"
+              required
+            />
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vehicleStatus" className="text-sm font-medium">
-                  Vehicle Status *
-                </Label>
-                <Select value={formData.vehicle_status} onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_status: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="IN">Vehicle IN</SelectItem>
-                    <SelectItem value="OUT">Vehicle OUT</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-vehicle-category">Vehicle Category</Label>
+            <Select 
+              value={formData.vehicle_category} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_category: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Car">Car</SelectItem>
+                <SelectItem value="Bike">Bike</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="vehicleCategory" className="text-sm font-medium">
-                  Vehicle Category *
-                </Label>
-                <Select value={formData.vehicle_category} onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_category: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Car">Car</SelectItem>
-                    <SelectItem value="Bike">Bike</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-vehicle-status">Vehicle Status</Label>
+            <Select 
+              value={formData.vehicle_status} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_status: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="IN">Vehicle IN</SelectItem>
+                <SelectItem value="OUT">Vehicle OUT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="companyName" className="text-sm font-medium">
-                  Company Name
-                </Label>
-                <Select value={formData.company_id || ''} onValueChange={(value) => setFormData(prev => ({ ...prev, company_id: value || null }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {companies.map((company) => (
-                      <SelectItem key={company.id} value={company.id}>
-                        {company.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-company">Company Name</Label>
+            <Select 
+              value={formData.company_id} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, company_id: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="others">Others</SelectItem>
+                {companies.map((company) => (
+                  <SelectItem key={company.id} value={company.id}>
+                    {company.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="purposeOfVisit" className="text-sm font-medium">
-                  Purpose of Visit
-                </Label>
-                <Select value={formData.purpose_of_visit} onValueChange={(value) => setFormData(prev => ({ ...prev, purpose_of_visit: value }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="To Meet Someone">To Meet Someone</SelectItem>
-                    <SelectItem value="Job">Job</SelectItem>
-                    <SelectItem value="Interview">Interview</SelectItem>
-                    <SelectItem value="Others">Others</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-owner-name">Owner Name</Label>
+            <Input
+              id="edit-owner-name"
+              value={formData.owner_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, owner_name: e.target.value }))}
+              placeholder="Enter owner name (optional)"
+            />
+          </div>
 
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="ownerName" className="text-sm font-medium">
-                  Vehicle Owner Name
-                </Label>
-                <Input
-                  id="ownerName"
-                  placeholder="Enter owner name (letters only)"
-                  value={formData.owner_name || ''}
-                  onChange={(e) => handleOwnerNameChange(e.target.value)}
-                  className="w-full"
-                />
-              </div>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-purpose">Purpose of Visit</Label>
+            <Select 
+              value={formData.purpose_of_visit} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, purpose_of_visit: value }))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Work">Work</SelectItem>
+                <SelectItem value="Meeting">Meeting</SelectItem>
+                <SelectItem value="Delivery">Delivery</SelectItem>
+                <SelectItem value="Personal">Personal</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                className="bg-blue-600 hover:bg-blue-700"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Updating..." : "Update Entry"}
-              </Button>
-            </div>
-          </form>
-        )}
+          <div className="space-y-2">
+            <Label htmlFor="edit-user-name">User Name</Label>
+            <Input
+              id="edit-user-name"
+              value={formData.user_name}
+              onChange={(e) => setFormData(prev => ({ ...prev, user_name: e.target.value }))}
+              placeholder="Enter user name (optional)"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="edit-user-mobile">User Mobile</Label>
+            <Input
+              id="edit-user-mobile"
+              value={formData.user_mobile}
+              onChange={(e) => setFormData(prev => ({ ...prev, user_mobile: e.target.value }))}
+              placeholder="Enter user mobile (optional)"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-2">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? "Updating..." : "Update Entry"}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );
