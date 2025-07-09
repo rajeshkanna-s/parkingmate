@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,14 +30,7 @@ const RecentEntries = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      fetchEntries();
-      subscribeToChanges();
-    }
-  }, [user]);
-
-  const fetchEntries = async () => {
+  const fetchEntries = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -65,13 +58,20 @@ const RecentEntries = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const subscribeToChanges = () => {
+  useEffect(() => {
+    if (user) {
+      fetchEntries();
+    }
+  }, [user, fetchEntries]);
+
+  useEffect(() => {
     if (!user) return;
 
+    // Set up real-time subscription for immediate updates
     const channel = supabase
-      .channel('vehicle_entries_changes')
+      .channel('vehicle_entries_realtime')
       .on(
         'postgres_changes',
         {
@@ -80,8 +80,9 @@ const RecentEntries = () => {
           table: 'vehicle_entries',
           filter: `user_id=eq.${user.id}`
         },
-        () => {
-          console.log('Vehicle entries changed, refetching...');
+        (payload) => {
+          console.log('Real-time update received:', payload);
+          // Refresh entries immediately when changes occur
           fetchEntries();
         }
       )
@@ -90,7 +91,7 @@ const RecentEntries = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  };
+  }, [user, fetchEntries]);
 
   const filteredEntries = entries.filter(entry =>
     entry.vehicle_number.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,6 +20,10 @@ const Auth = () => {
     confirmPassword: '',
     mobile: ''
   });
+  const [validationErrors, setValidationErrors] = useState({
+    email: '',
+    mobile: ''
+  });
   
   const { user, signIn, signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
@@ -30,6 +33,42 @@ const Auth = () => {
       navigate('/');
     }
   }, [user, navigate]);
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+    if (!email) {
+      return 'Email is required';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+    return '';
+  };
+
+  const validateMobile = (mobile: string) => {
+    const mobileRegex = /^[6789]\d{9}$/;
+    if (!mobile) {
+      return 'Mobile number is required';
+    }
+    if (!mobileRegex.test(mobile)) {
+      return 'Mobile number must be 10 digits starting with 6, 7, 8, or 9';
+    }
+    return '';
+  };
+
+  const handleEmailChange = (email: string) => {
+    setSignUpData(prev => ({ ...prev, email }));
+    const error = validateEmail(email);
+    setValidationErrors(prev => ({ ...prev, email: error }));
+  };
+
+  const handleMobileChange = (mobile: string) => {
+    // Allow only numbers
+    const numericMobile = mobile.replace(/\D/g, '').slice(0, 10);
+    setSignUpData(prev => ({ ...prev, mobile: numericMobile }));
+    const error = validateMobile(numericMobile);
+    setValidationErrors(prev => ({ ...prev, mobile: error }));
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,6 +106,24 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate email and mobile
+    const emailError = validateEmail(signUpData.email);
+    const mobileError = validateMobile(signUpData.mobile);
+    
+    setValidationErrors({
+      email: emailError,
+      mobile: mobileError
+    });
+
+    if (emailError || mobileError) {
+      toast({
+        title: "Validation Error",
+        description: "Please fix the validation errors before proceeding.",
+        variant: "destructive"
+      });
+      return;
+    }
     
     if (signUpData.password !== signUpData.confirmPassword) {
       toast({
@@ -239,11 +296,14 @@ const Auth = () => {
                       type="email"
                       placeholder="Enter your email"
                       value={signUpData.email}
-                      onChange={(e) => setSignUpData(prev => ({ ...prev, email: e.target.value }))}
-                      className="pl-10"
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      className={`pl-10 ${validationErrors.email ? 'border-red-500' : ''}`}
                       required
                     />
                   </div>
+                  {validationErrors.email && (
+                    <p className="text-red-500 text-sm">{validationErrors.email}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -253,13 +313,17 @@ const Auth = () => {
                     <Input
                       id="signup-mobile"
                       type="tel"
-                      placeholder="Enter your mobile number"
+                      placeholder="Enter 10-digit mobile number"
                       value={signUpData.mobile}
-                      onChange={(e) => setSignUpData(prev => ({ ...prev, mobile: e.target.value }))}
-                      className="pl-10"
+                      onChange={(e) => handleMobileChange(e.target.value)}
+                      className={`pl-10 ${validationErrors.mobile ? 'border-red-500' : ''}`}
+                      maxLength={10}
                       required
                     />
                   </div>
+                  {validationErrors.mobile && (
+                    <p className="text-red-500 text-sm">{validationErrors.mobile}</p>
+                  )}
                 </div>
                 
                 <div className="space-y-2">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -176,17 +175,22 @@ const Reports = () => {
   };
 
   const exportToExcel = () => {
-    const exportData = filteredEntries.map(entry => ({
-      'Vehicle Number': entry.vehicle_number,
-      'Category': entry.vehicle_category,
-      'Status': entry.vehicle_status,
-      'Company': entry.companies?.name || 'Others',
-      'Owner Name': entry.owner_name || 'N/A',
-      'Purpose': entry.purpose_of_visit,
-      'User Name': entry.user_name || 'N/A',
-      'User Mobile': entry.user_mobile || 'N/A',
-      'Date & Time': new Date(entry.created_at).toLocaleString()
-    }));
+    const exportData = filteredEntries.map(entry => {
+      const date = new Date(entry.created_at);
+      const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}, ${date.toLocaleTimeString('en-US', { hour12: true })}`;
+      
+      return {
+        'Vehicle Number': entry.vehicle_number,
+        'Category': entry.vehicle_category,
+        'Status': entry.vehicle_status,
+        'Company': entry.companies?.name || 'Others',
+        'Owner Name': entry.owner_name || 'N/A',
+        'Purpose': entry.purpose_of_visit,
+        'User Name': entry.user_name || 'N/A',
+        'User Mobile': entry.user_mobile || 'N/A',
+        'Date & Time': formattedDate
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -211,17 +215,22 @@ const Reports = () => {
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 32);
     doc.text(`Total Entries: ${filteredEntries.length}`, 14, 40);
 
-    const tableData = filteredEntries.map(entry => [
-      entry.vehicle_number,
-      entry.vehicle_category,
-      entry.vehicle_status,
-      entry.companies?.name || 'Others',
-      entry.owner_name || 'N/A',
-      entry.purpose_of_visit,
-      entry.user_name || 'N/A',
-      entry.user_mobile || 'N/A',
-      new Date(entry.created_at).toLocaleDateString()
-    ]);
+    const tableData = filteredEntries.map(entry => {
+      const date = new Date(entry.created_at);
+      const formattedDate = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+      
+      return [
+        entry.vehicle_number,
+        entry.vehicle_category,
+        entry.vehicle_status,
+        entry.companies?.name || 'Others',
+        entry.owner_name || 'N/A',
+        entry.purpose_of_visit,
+        entry.user_name || 'N/A',
+        entry.user_mobile || 'N/A',
+        formattedDate
+      ];
+    });
 
     autoTable(doc, {
       head: [['Vehicle No.', 'Category', 'Status', 'Company', 'Owner', 'Purpose', 'User', 'Mobile', 'Date']],
