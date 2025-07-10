@@ -203,7 +203,6 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
 
 
               <SelectContent>
-
                 <SelectItem value="Car">Car</SelectItem>
                 <SelectItem value="Bike">Bike</SelectItem>
               </SelectContent>
@@ -220,9 +219,8 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
                 <SelectValue />
               </SelectTrigger>
 
-=======
-              <SelectContent>
 
+              <SelectContent>
                 <SelectItem value="IN">Vehicle IN</SelectItem>
                 <SelectItem value="OUT">Vehicle OUT</SelectItem>
               </SelectContent>
