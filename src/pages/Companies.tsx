@@ -114,21 +114,6 @@ const Companies = () => {
       return;
     }
 
-    // Check for duplicate company names for this user only
-    const existingCompany = companies.find(
-      company => company.name.toLowerCase() === newCompany.trim().toLowerCase()
-    );
-
-    if (existingCompany) {
-      toast({
-        title: "Error",
-        description: "You have already added this company name.",
-        variant: "destructive",
-        duration: 3000
-      });
-      return;
-    }
-
     try {
       const { error } = await supabase
         .from('companies')
@@ -179,23 +164,6 @@ const Companies = () => {
       toast({
         title: "Error",
         description: "Company name 'Others' is reserved and cannot be used.",
-        variant: "destructive",
-        duration: 3000
-      });
-      return;
-    }
-
-    // Check for duplicate company names for this user (excluding current one)
-    const existingCompany = companies.find(
-      (company, index) => 
-        index !== editingIndex && 
-        company.name.toLowerCase() === editingValue.trim().toLowerCase()
-    );
-
-    if (existingCompany) {
-      toast({
-        title: "Error",
-        description: "You already have a company with this name.",
         variant: "destructive",
         duration: 3000
       });
@@ -436,7 +404,7 @@ const Companies = () => {
               <p className="text-sm text-blue-800">
                 <strong>Note:</strong> Changes to your company list will be immediately reflected in the vehicle entry form dropdown.
                 The "Others" option is always available by default and cannot be removed. Only you can see and manage your companies.
-                You cannot add duplicate company names to your list.
+                Duplicate company names are now allowed in your list.
               </p>
             </div>
           </CardContent>
