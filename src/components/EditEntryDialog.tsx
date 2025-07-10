@@ -47,8 +47,6 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
     company_id: '',
     owner_name: '',
     purpose_of_visit: 'Work',
-    user_name: '',
-    user_mobile: ''
   });
 
   useEffect(() => {
@@ -107,8 +105,6 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
           company_id: data.company_id || 'others',
           owner_name: data.owner_name || '',
           purpose_of_visit: data.purpose_of_visit || 'Work',
-          user_name: data.user_name || '',
-          user_mobile: data.user_mobile || ''
         });
       }
     } catch (error) {
@@ -137,8 +133,6 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
         company_id: formData.company_id === 'others' ? null : formData.company_id,
         owner_name: formData.owner_name || null,
         purpose_of_visit: formData.purpose_of_visit,
-        user_name: formData.user_name || null,
-        user_mobile: formData.user_mobile || null,
         updated_at: new Date().toISOString()
       };
 
@@ -173,7 +167,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto overflow-x-hidden max-w-full">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Vehicle Entry</DialogTitle>
         </DialogHeader>
@@ -196,12 +190,9 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.vehicle_category} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_category: value }))}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-
-
-
               <SelectContent>
                 <SelectItem value="Car">Car</SelectItem>
                 <SelectItem value="Bike">Bike</SelectItem>
@@ -215,11 +206,9 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.vehicle_status} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, vehicle_status: value }))}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-
-
               <SelectContent>
                 <SelectItem value="IN">Vehicle IN</SelectItem>
                 <SelectItem value="OUT">Vehicle OUT</SelectItem>
@@ -233,14 +222,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.company_id} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, company_id: value }))}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-
-
-
               <SelectContent>
-
                 <SelectItem value="others">Others</SelectItem>
                 {companies.map((company) => (
                   <SelectItem key={company.id} value={company.id}>
@@ -267,13 +252,10 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               value={formData.purpose_of_visit} 
               onValueChange={(value) => setFormData(prev => ({ ...prev, purpose_of_visit: value }))}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-
-
               <SelectContent>
-
                 <SelectItem value="Work">Work</SelectItem>
                 <SelectItem value="Meeting">Meeting</SelectItem>
                 <SelectItem value="Delivery">Delivery</SelectItem>
@@ -281,26 +263,6 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-user-name">User Name</Label>
-            <Input
-              id="edit-user-name"
-              value={formData.user_name}
-              onChange={(e) => setFormData(prev => ({ ...prev, user_name: e.target.value }))}
-              placeholder="Enter user name (optional)"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-user-mobile">User Mobile</Label>
-            <Input
-              id="edit-user-mobile"
-              value={formData.user_mobile}
-              onChange={(e) => setFormData(prev => ({ ...prev, user_mobile: e.target.value }))}
-              placeholder="Enter user mobile (optional)"
-            />
           </div>
 
           <div className="flex justify-end space-x-2">
