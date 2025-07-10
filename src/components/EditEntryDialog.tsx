@@ -202,7 +202,8 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
 
 
 
-              <SelectContent>
+              <SelectContent className="bg-white z-50 shadow-lg border">
+
                 <SelectItem value="Car">Car</SelectItem>
                 <SelectItem value="Bike">Bike</SelectItem>
               </SelectContent>
@@ -220,7 +221,8 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               </SelectTrigger>
 
 
-              <SelectContent>
+              <SelectContent className="bg-white z-50 shadow-lg border">
+
                 <SelectItem value="IN">Vehicle IN</SelectItem>
                 <SelectItem value="OUT">Vehicle OUT</SelectItem>
               </SelectContent>
@@ -239,7 +241,7 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
 
 
 
-              <SelectContent>
+              <SelectContent className="bg-white z-50 shadow-lg border max-h-[200px] overflow-y-auto">
 
                 <SelectItem value="others">Others</SelectItem>
                 {companies.map((company) => (
@@ -272,12 +274,13 @@ const EditEntryDialog = ({ isOpen, onClose, entryId, onSuccess }: EditEntryDialo
               </SelectTrigger>
 
 
-              <SelectContent>
+              <SelectContent className="bg-white z-50 shadow-lg border">
 
                 <SelectItem value="Work">Work</SelectItem>
-                <SelectItem value="Meeting">Meeting</SelectItem>
+                <SelectItem value="Meeting">To Meet Someone</SelectItem>
                 <SelectItem value="Delivery">Delivery</SelectItem>
                 <SelectItem value="Personal">Personal</SelectItem>
+                <SelectItem value="Personal">Interview</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
             </Select>

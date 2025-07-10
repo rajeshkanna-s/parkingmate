@@ -30,7 +30,7 @@ const VehicleEntryForm = () => {
     vehicleStatus: '',
     vehicleCategory: '',
     companyId: 'others',
-    purposeOfVisit: 'Job',
+    purposeOfVisit: 'Work',
     ownerName: ''
   });
 
@@ -129,7 +129,7 @@ const VehicleEntryForm = () => {
           ...prev,
           vehicleCategory: vehicleData.vehicle_category || '',
           companyId: vehicleData.company_id || 'others',
-          purposeOfVisit: vehicleData.purpose_of_visit || 'Job',
+          purposeOfVisit: vehicleData.purpose_of_visit || 'Work',
           ownerName: vehicleData.owner_name || '',
           // Toggle vehicle status
           vehicleStatus: vehicleData.vehicle_status === 'IN' ? 'OUT' : 'IN'
@@ -209,7 +209,7 @@ const VehicleEntryForm = () => {
         vehicleStatus: '',
         vehicleCategory: '',
         companyId: 'others',
-        purposeOfVisit: 'Job',
+        purposeOfVisit: 'Work',
         ownerName: ''
       });
       
@@ -342,10 +342,13 @@ const VehicleEntryForm = () => {
 
                 <SelectContent>
 
-                  <SelectItem value="To Meet Someone">To Meet Someone</SelectItem>
-                  <SelectItem value="Job">Job</SelectItem>
-                  <SelectItem value="Interview">Interview</SelectItem>
-                  <SelectItem value="Others">Others</SelectItem>
+                <SelectItem value="Work">Work</SelectItem>
+                <SelectItem value="Meeting">To Meet Someone</SelectItem>
+                <SelectItem value="Delivery">Delivery</SelectItem>
+                <SelectItem value="Personal">Personal</SelectItem>
+                <SelectItem value="Personal">Interview</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+                  
                 </SelectContent>
               </Select>
             </div>
