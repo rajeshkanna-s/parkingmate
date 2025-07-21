@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import Reports from "./pages/Reports";
 import Companies from "./pages/Companies";
+import VehicleOCRPage from "./pages/VehicleOCR";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -42,6 +43,11 @@ const App = () => (
             <Route path="/companies" element={
               <ProtectedRoute>
                 <Companies />
+              </ProtectedRoute>
+            } />
+            <Route path="/ocr" element={
+              <ProtectedRoute>
+                <VehicleOCRPage />
               </ProtectedRoute>
             } />
             <Route path="*" element={<NotFound />} />

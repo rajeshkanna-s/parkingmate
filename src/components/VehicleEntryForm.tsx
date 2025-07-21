@@ -4,10 +4,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Car, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Car, Plus, Camera } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import VehicleOCR from './VehicleOCR';
 
 interface VehicleEntry {
   vehicleNumber: string;
@@ -37,6 +39,7 @@ const VehicleEntryForm = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [isOCRDialogOpen, setIsOCRDialogOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -109,6 +112,17 @@ const VehicleEntryForm = () => {
       console.error('Error fetching vehicle data:', error);
       return null;
     }
+  };
+
+  const handleOCRVehicleNumber = (vehicleNumber: string) => {
+    setFormData(prev => ({
+      ...prev,
+      vehicleNumber: vehicleNumber
+    }));
+    setIsOCRDialogOpen(false);
+    
+    // Trigger the same logic as manual input
+    handleVehicleNumberChange(vehicleNumber);
   };
 
   const handleVehicleNumberChange = async (value: string) => {
@@ -258,15 +272,35 @@ const VehicleEntryForm = () => {
               <Label htmlFor="vehicleNumber" className="text-sm font-medium">
                 Vehicle Number *
               </Label>
-              <Input
-                id="vehicleNumber"
-                placeholder="Enter vehicle number"
-                value={formData.vehicleNumber}
-                onChange={(e) => handleVehicleNumberChange(e.target.value)}
-                className="w-full uppercase"
-                maxLength={13}
-                required
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="vehicleNumber"
+                  placeholder="Enter vehicle number"
+                  value={formData.vehicleNumber}
+                  onChange={(e) => handleVehicleNumberChange(e.target.value)}
+                  className="flex-1 uppercase"
+                  maxLength={13}
+                  required
+                />
+                <Dialog open={isOCRDialogOpen} onOpenChange={setIsOCRDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                      <DialogTitle>Detect Vehicle Number</DialogTitle>
+                    </DialogHeader>
+                    <VehicleOCR onVehicleNumberDetected={handleOCRVehicleNumber} />
+                  </DialogContent>
+                </Dialog>
+              </div>
               <p className="text-xs text-gray-500">Max 13 characters, letters and numbers only</p>
             </div>
 
@@ -278,9 +312,6 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-
-
-
                 <SelectContent>
                   <SelectItem value="IN">Vehicle IN</SelectItem>
                   <SelectItem value="OUT">Vehicle OUT</SelectItem>
@@ -296,11 +327,7 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-
-
-
                 <SelectContent>
-
                   <SelectItem value="Car">Car</SelectItem>
                   <SelectItem value="Bike">Bike</SelectItem>
                 </SelectContent>
@@ -315,11 +342,7 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
-
-
-
                 <SelectContent>
-
                   <SelectItem value="others">Others</SelectItem>
                   {companies.map((company) => (
                     <SelectItem key={company.id} value={company.id}>
@@ -338,10 +361,7 @@ const VehicleEntryForm = () => {
                 <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-
-
                 <SelectContent>
-
                 <SelectItem value="Work">Work</SelectItem>
                 <SelectItem value="Meeting">To Meet Someone</SelectItem>
                 <SelectItem value="Delivery">Delivery</SelectItem>
