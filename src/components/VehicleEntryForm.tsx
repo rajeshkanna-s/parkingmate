@@ -346,7 +346,7 @@ const VehicleEntryForm = () => {
                 <SelectItem value="Meeting">To Meet Someone</SelectItem>
                 <SelectItem value="Delivery">Delivery</SelectItem>
                 <SelectItem value="Personal">Personal</SelectItem>
-                <SelectItem value="Personal">Interview</SelectItem>
+                <SelectItem value="Interview">Interview</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
                   
                 </SelectContent>
