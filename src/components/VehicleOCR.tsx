@@ -111,7 +111,9 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
       console.log('Cleaned text:', cleanText);
       
       // Try to find vehicle number pattern in the cleaned text
-      const match = cleanText.match(/[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/i);
+      //const match = cleanText.match(/[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/i);
+      const match = cleanText.match(vehicleNumberRegex);
+
       if (match) {
         return match[0].toUpperCase();
       }
