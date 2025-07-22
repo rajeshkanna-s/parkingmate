@@ -24,19 +24,22 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Vehicle number regex pattern
-  const vehicleNumberRegex = /[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/g;
+  //const vehicleNumberRegex = /[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/g;
+   const vehicleNumberRegex = /^[A-Za-z0-9]{1,14}$/;
 
   const extractVehicleNumber = useCallback(async (imageFile: File | string) => {
     setIsProcessing(true);
     
     try {
-      const { data: { text } } = await Tesseract.recognize(
+      const result = await Tesseract.recognize(
         imageFile,
         'eng',
         {
-          logger: (m) => console.log('OCR Progress:', m)
-        }
+          logger: (m) => console.log('OCR Progress:', m),
+          config: 'tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 tessedit_pageseg_mode=7'
+        } as any
       );
+      const text = result.data.text;
 
       console.log('OCR Raw Text:', text);
       
