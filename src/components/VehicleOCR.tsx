@@ -18,33 +18,115 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
   const [previewImage, setPreviewImage] = useState<string>('');
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
+  const [ocrMethod, setOcrMethod] = useState<string>('');
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // OCR.space API configuration
+  const OCR_SPACE_API_KEY = 'K87630703888957';
+  const OCR_SPACE_ENDPOINT = 'https://api.ocr.space/parse/image';
+
   // Vehicle number regex pattern
   const vehicleNumberRegex = /[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/g;
 
-  const extractVehicleNumber = useCallback(async (imageFile: File | string) => {
-    setIsProcessing(true);
-    
+  const extractVehicleNumberWithOCRSpace = useCallback(async (imageFile: File): Promise<string | null> => {
     try {
+      console.log('Attempting OCR with OCR.space API...');
+      
+      const formData = new FormData();
+      formData.append('file', imageFile);
+      formData.append('language', 'eng');
+      formData.append('apikey', OCR_SPACE_API_KEY);
+      formData.append('isOverlayRequired', 'false');
+      formData.append('OCREngine', '2'); // Engine 2 is better for license plates
+      formData.append('scale', 'true'); // Improve OCR for low-resolution images
+
+      const response = await fetch(OCR_SPACE_ENDPOINT, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`OCR.space API error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('OCR.space API Response:', result);
+
+      if (result.OCRExitCode === 1 && result.ParsedResults && result.ParsedResults.length > 0) {
+        const parsedText = result.ParsedResults[0].ParsedText;
+        console.log('OCR.space Parsed Text:', parsedText);
+
+        // Extract vehicle numbers using regex
+        const matches = parsedText.match(vehicleNumberRegex);
+        if (matches && matches.length > 0) {
+          return matches[0];
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error('OCR.space API Error:', error);
+      return null;
+    }
+  }, []);
+
+  const extractVehicleNumberWithTesseract = useCallback(async (imageFile: File | string): Promise<string | null> => {
+    try {
+      console.log('Attempting OCR with Tesseract.js (fallback)...');
+      
       const { data: { text } } = await Tesseract.recognize(
         imageFile,
         'eng',
         {
-          logger: (m) => console.log('OCR Progress:', m)
+          logger: (m) => console.log('Tesseract Progress:', m)
         }
       );
 
-      console.log('OCR Raw Text:', text);
+      console.log('Tesseract Raw Text:', text);
       
       // Extract vehicle numbers using regex
       const matches = text.match(vehicleNumberRegex);
-      
       if (matches && matches.length > 0) {
-        const vehicleNumber = matches[0];
+        return matches[0];
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Tesseract Error:', error);
+      return null;
+    }
+  }, []);
+
+  const extractVehicleNumber = useCallback(async (imageFile: File | string) => {
+    setIsProcessing(true);
+    setOcrMethod('');
+    
+    try {
+      let vehicleNumber: string | null = null;
+      let usedMethod = '';
+
+      // First try OCR.space API (only for File objects)
+      if (imageFile instanceof File) {
+        vehicleNumber = await extractVehicleNumberWithOCRSpace(imageFile);
+        if (vehicleNumber) {
+          usedMethod = 'OCR.space API';
+        }
+      }
+
+      // If OCR.space failed, try Tesseract.js as fallback
+      if (!vehicleNumber) {
+        vehicleNumber = await extractVehicleNumberWithTesseract(imageFile);
+        if (vehicleNumber) {
+          usedMethod = 'Tesseract.js (fallback)';
+        }
+      }
+
+      setOcrMethod(usedMethod);
+
+      if (vehicleNumber) {
         setDetectedNumber(vehicleNumber);
         
         if (onVehicleNumberDetected) {
@@ -53,13 +135,13 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
         
         toast({
           title: "Vehicle Number Detected",
-          description: `Found: ${vehicleNumber}`,
+          description: `Found: ${vehicleNumber} using ${usedMethod}`,
           className: "bg-green-50 border-green-200 text-green-800",
         });
       } else {
         toast({
           title: "No Vehicle Number Found",
-          description: "Could not detect a valid vehicle number in the image.",
+          description: "Could not detect a valid vehicle number in the image using any OCR method.",
           variant: "destructive",
         });
       }
@@ -73,7 +155,7 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
     } finally {
       setIsProcessing(false);
     }
-  }, [onVehicleNumberDetected]);
+  }, [extractVehicleNumberWithOCRSpace, extractVehicleNumberWithTesseract, onVehicleNumberDetected]);
 
   const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -157,14 +239,18 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
       // Stop camera
       stopCamera();
 
+      // Convert blob to File for OCR.space API
+      const file = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' });
+
       // Process with OCR
-      await extractVehicleNumber(blob as any);
+      await extractVehicleNumber(file);
     }, 'image/jpeg', 0.8);
   }, [extractVehicleNumber, stopCamera]);
 
   const clearResults = useCallback(() => {
     setDetectedNumber('');
     setPreviewImage('');
+    setOcrMethod('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -177,6 +263,9 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
           <Camera className="h-6 w-6 text-blue-600" />
           Vehicle Number Detection (OCR)
         </CardTitle>
+        <p className="text-sm text-gray-600">
+          Uses OCR.space API with Tesseract.js fallback
+        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* File Upload Section */}
@@ -284,6 +373,11 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
               <p className="text-2xl font-bold text-green-800 text-center">
                 {detectedNumber}
               </p>
+              {ocrMethod && (
+                <p className="text-xs text-green-600 text-center mt-1">
+                  Detected using: {ocrMethod}
+                </p>
+              )}
             </div>
           </div>
         )}
