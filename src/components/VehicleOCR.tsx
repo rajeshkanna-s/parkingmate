@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -29,8 +29,16 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
   const OCR_SPACE_ENDPOINT = 'https://api.ocr.space/parse/image';
 
   // Vehicle number regex pattern
-  //const vehicleNumberRegex = /[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/g;
   const vehicleNumberRegex = /^([A-Za-z]{1,2}[0-9]{1,3}[A-Za-z]{1,3}[0-9]{3,5}|[0-9]{2}[A-Za-z]{2}[0-9]{4}[A-Za-z])$/i;
+
+  // Cleanup camera stream on component unmount
+  useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
 
   const extractVehicleNumberWithOCRSpace = useCallback(async (imageFile: File): Promise<string | null> => {
     try {
@@ -60,10 +68,20 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
         const parsedText = result.ParsedResults[0].ParsedText;
         console.log('OCR.space Parsed Text:', parsedText);
 
-        // Extract vehicle numbers using regex
-        const matches = parsedText.match(vehicleNumberRegex);
-        if (matches && matches.length > 0) {
-          return matches[0];
+        // Clean up the text and look for vehicle numbers
+        const cleanText = parsedText.replace(/\s+/g, '').replace(/\n/g, '');
+        console.log('Cleaned text:', cleanText);
+        
+        // Try to find vehicle number pattern in the cleaned text
+        const match = cleanText.match(/[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/i);
+        if (match) {
+          return match[0].toUpperCase();
+        }
+        
+        // Fallback: try broader pattern
+        const broadMatch = cleanText.match(/[A-Z0-9]{8,13}/i);
+        if (broadMatch) {
+          return broadMatch[0].toUpperCase();
         }
       }
 
@@ -88,10 +106,20 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
 
       console.log('Tesseract Raw Text:', text);
       
-      // Extract vehicle numbers using regex
-      const matches = text.match(vehicleNumberRegex);
-      if (matches && matches.length > 0) {
-        return matches[0];
+      // Clean up the text and look for vehicle numbers
+      const cleanText = text.replace(/\s+/g, '').replace(/\n/g, '');
+      console.log('Cleaned text:', cleanText);
+      
+      // Try to find vehicle number pattern in the cleaned text
+      const match = cleanText.match(/[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/i);
+      if (match) {
+        return match[0].toUpperCase();
+      }
+      
+      // Fallback: try broader pattern
+      const broadMatch = cleanText.match(/[A-Z0-9]{8,13}/i);
+      if (broadMatch) {
+        return broadMatch[0].toUpperCase();
       }
 
       return null;
@@ -185,67 +213,129 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
 
   const startCamera = useCallback(async () => {
     try {
+      console.log('Starting camera...');
+      
+      // Stop any existing stream first
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' } // Use back camera on mobile
+        video: { 
+          facingMode: 'environment', // Use back camera on mobile
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        }
       });
       
+      console.log('Camera stream obtained:', mediaStream);
       setStream(mediaStream);
       setIsCameraOpen(true);
       
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
+      // Wait for video element to be ready
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+          videoRef.current.play().catch(console.error);
+        }
+      }, 100);
+
+      toast({
+        title: "Camera Started",
+        description: "Camera is now active. Position the vehicle number in view and click Capture.",
+        className: "bg-blue-50 border-blue-200 text-blue-800",
+      });
     } catch (error) {
       console.error('Camera Error:', error);
       toast({
         title: "Camera Error",
-        description: "Could not access camera. Please check permissions.",
+        description: "Could not access camera. Please check permissions and try again.",
         variant: "destructive",
       });
     }
-  }, []);
+  }, [stream]);
 
   const stopCamera = useCallback(() => {
+    console.log('Stopping camera...');
     if (stream) {
       stream.getTracks().forEach(track => track.stop());
       setStream(null);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
     setIsCameraOpen(false);
   }, [stream]);
 
   const capturePhoto = useCallback(async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current) {
+      toast({
+        title: "Error",
+        description: "Camera not ready. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     const canvas = canvasRef.current;
     const video = videoRef.current;
     const context = canvas.getContext('2d');
 
-    if (!context) return;
+    if (!context) {
+      toast({
+        title: "Error",
+        description: "Could not get canvas context.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    try {
+      // Set canvas dimensions to match video
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
 
-    // Draw video frame to canvas
-    context.drawImage(video, 0, 0);
+      // Draw video frame to canvas
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Convert canvas to blob
-    canvas.toBlob(async (blob) => {
-      if (!blob) return;
+      // Convert canvas to blob
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          toast({
+            title: "Error",
+            description: "Could not capture image.",
+            variant: "destructive",
+          });
+          return;
+        }
 
-      // Create preview
-      const imageUrl = URL.createObjectURL(blob);
-      setPreviewImage(imageUrl);
+        // Create preview
+        const imageUrl = URL.createObjectURL(blob);
+        setPreviewImage(imageUrl);
 
-      // Stop camera
-      stopCamera();
+        // Stop camera
+        stopCamera();
 
-      // Convert blob to File for OCR.space API
-      const file = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' });
+        // Convert blob to File for OCR.space API
+        const file = new File([blob], 'captured-image.jpg', { type: 'image/jpeg' });
 
-      // Process with OCR
-      await extractVehicleNumber(file);
-    }, 'image/jpeg', 0.8);
+        toast({
+          title: "Photo Captured",
+          description: "Processing image for vehicle number detection...",
+          className: "bg-blue-50 border-blue-200 text-blue-800",
+        });
+
+        // Process with OCR
+        await extractVehicleNumber(file);
+      }, 'image/jpeg', 0.8);
+    } catch (error) {
+      console.error('Capture error:', error);
+      toast({
+        title: "Capture Error",
+        description: "Failed to capture photo. Please try again.",
+        variant: "destructive",
+      });
+    }
   }, [extractVehicleNumber, stopCamera]);
 
   const clearResults = useCallback(() => {
@@ -282,11 +372,12 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
               onChange={handleFileUpload}
               ref={fileInputRef}
               className="flex-1"
+              disabled={isProcessing || isCameraOpen}
             />
             <Button
               variant="outline"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isProcessing}
+              disabled={isProcessing || isCameraOpen}
             >
               <Upload className="h-4 w-4 mr-2" />
               Browse
@@ -315,7 +406,7 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
                   className="bg-green-600 hover:bg-green-700"
                 >
                   <Camera className="h-4 w-4 mr-2" />
-                  Capture
+                  Capture Photo
                 </Button>
                 <Button
                   variant="outline"
@@ -323,7 +414,7 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
                   disabled={isProcessing}
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Close
+                  Close Camera
                 </Button>
               </div>
             )}
@@ -333,12 +424,21 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
         {/* Camera Preview */}
         {isCameraOpen && (
           <div className="relative">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              className="w-full h-64 bg-black rounded-lg object-cover"
-            />
+            <Label className="text-sm font-medium mb-2 block">Camera View</Label>
+            <div className="relative bg-black rounded-lg overflow-hidden">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-64 object-cover"
+              />
+              <div className="absolute inset-0 border-2 border-dashed border-yellow-400 m-4 rounded-lg pointer-events-none">
+                <div className="absolute top-2 left-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                  Position vehicle number in frame
+                </div>
+              </div>
+            </div>
             <canvas
               ref={canvasRef}
               className="hidden"
@@ -349,7 +449,7 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
         {/* Image Preview */}
         {previewImage && (
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Preview</Label>
+            <Label className="text-sm font-medium">Captured Image</Label>
             <img
               src={previewImage}
               alt="Preview"
@@ -389,6 +489,7 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
             variant="outline"
             onClick={clearResults}
             className="w-full"
+            disabled={isProcessing}
           >
             Clear Results
           </Button>
