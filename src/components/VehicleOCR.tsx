@@ -29,7 +29,8 @@ const VehicleOCR: React.FC<VehicleOCRProps> = ({ onVehicleNumberDetected }) => {
   const OCR_SPACE_ENDPOINT = 'https://api.ocr.space/parse/image';
 
   // Vehicle number regex pattern
-  const vehicleNumberRegex = /[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/g;
+  //const vehicleNumberRegex = /[A-Z]{2}[0-9]{2}[A-Z]{1,2}[0-9]{4}/g;
+  const vehicleNumberRegex = /^([A-Za-z]{1,2}[0-9]{1,3}[A-Za-z]{1,3}[0-9]{3,5}|[0-9]{2}[A-Za-z]{2}[0-9]{4}[A-Za-z])$/i;
 
   const extractVehicleNumberWithOCRSpace = useCallback(async (imageFile: File): Promise<string | null> => {
     try {
