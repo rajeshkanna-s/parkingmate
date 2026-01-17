@@ -10,8 +10,10 @@ const Index = () => {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Welcome to ParkingMate
+          <h1 className="text-4xl font-bold mb-2">
+            <span className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500 bg-clip-text text-transparent">
+              Welcome to ParkingMate
+            </span>
           </h1>
         </div>
 
